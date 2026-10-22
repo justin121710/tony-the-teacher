@@ -1,0 +1,35 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ★ 把下面的 Email 換成設計師登入用的 Email（APP 裡「資料庫安全規則」會自動帶入）
+    function isOwner() {
+      return request.auth != null && request.auth.token.email == 'stylist@example.com';
+    }
+    match /public/{doc} { allow read: if true; allow write: if isOwner(); }
+    match /busy/{date} { allow read: if true; allow write: if isOwner(); }
+    match /holds/{id} {
+      allow read: if true;
+      allow create: if request.resource.data.keys().hasOnly(['date','s','e','createdAt'])
+        && request.resource.data.date is string && request.resource.data.date.size() == 10
+        && request.resource.data.s is int && request.resource.data.e is int
+        && request.resource.data.e > request.resource.data.s && request.resource.data.e - request.resource.data.s <= 720
+        && request.resource.data.createdAt is int;
+      allow delete: if isOwner();
+    }
+    match /requests/{id} {
+      allow create: if request.resource.data.keys().hasOnly(['date','start','duration','price','services','name','phone','note','status','createdAt','holdId'])
+        && request.resource.data.status == 'pending'
+        && request.resource.data.date is string && request.resource.data.date.size() == 10
+        && request.resource.data.start is string && request.resource.data.start.size() == 5
+        && request.resource.data.duration is int && request.resource.data.duration > 0 && request.resource.data.duration <= 720
+        && request.resource.data.price is number
+        && request.resource.data.services is list && request.resource.data.services.size() <= 10
+        && request.resource.data.name is string && request.resource.data.name.size() <= 30
+        && request.resource.data.phone is string && request.resource.data.phone.size() >= 8 && request.resource.data.phone.size() <= 15
+        && request.resource.data.note is string && request.resource.data.note.size() <= 200
+        && request.resource.data.createdAt is int;
+      allow read, update, delete: if isOwner();
+    }
+    match /{coll}/{id} { allow read, write: if isOwner(); }
+  }
+}

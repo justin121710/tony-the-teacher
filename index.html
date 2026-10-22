@@ -1,0 +1,1011 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#FFF7EE">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Tony老師">
+<meta name="description" content="Tony the Teacher — 獨立設計師的預約小幫手">
+<title>Tony老師</title>
+<link rel="icon" type="image/svg+xml" href="icons/icon.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<script src="config.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Outfit:wght@500;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#FFF7EE;--ink:#1B1B1F;--muted:#6E6A66;--card:#FFFFFF;--soft:#F1E7DC;--line:#E3D8CC;--dash:#CFC6BC;--red:#B42318;color-scheme:light}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 "Noto Sans TC",-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;-webkit-tap-highlight-color:transparent}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;background:none;border:0;padding:0;text-align:inherit}
+.num{font-family:Outfit,"Noto Sans TC",sans-serif;font-variant-numeric:tabular-nums}
+input,select,textarea{width:100%;background:var(--card);border:2px solid transparent;border-radius:18px;padding:12px 16px;outline:none;min-height:52px}
+input:focus,textarea:focus,select:focus{border-color:var(--ink)}
+input::placeholder,textarea::placeholder{color:#8A837D}
+#app{max-width:520px;margin:0 auto;padding:calc(env(safe-area-inset-top) + 14px) 16px calc(120px + env(safe-area-inset-bottom))}
+.hd{display:flex;align-items:center;gap:6px;margin:4px 0 14px}
+.hd h1{font-size:23px;font-weight:900;margin:0 4px;position:relative;white-space:nowrap}
+.hd h1 input{position:absolute;inset:0;opacity:0;min-height:0;padding:0}
+.ib{width:44px;height:44px;border-radius:16px;display:grid;place-items:center;background:var(--soft);flex:none;font-size:20px}
+.clock{margin-left:auto;font-weight:700;color:var(--muted);font-size:16px}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:0 14px;border-radius:999px;background:var(--soft);font-weight:700;font-size:14px;min-height:40px}
+h2.sec{font-size:15px;font-weight:900;margin:22px 6px 8px}
+.now{border-radius:32px;padding:22px;display:flex;flex-direction:column;gap:12px;background:var(--c)}
+.now.late{box-shadow:0 0 0 4px var(--bg),0 0 0 7px var(--ink)}
+.now .top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.badge{font-size:13px;font-weight:900;padding:4px 12px;border-radius:999px;background:var(--ink);color:#fff;display:inline-flex;gap:6px;align-items:center;align-self:flex-start}
+.now .svc{font-size:34px;font-weight:900;line-height:1.15;display:block;width:100%}
+.tags{display:flex;gap:6px;flex-wrap:wrap}
+.tag{font-size:13px;font-weight:700;padding:2px 10px;border-radius:999px;background:rgba(255,255,255,.62)}
+.bar{height:10px;border-radius:5px;background:rgba(255,255,255,.5);overflow:hidden}.bar i{display:block;height:100%;background:var(--ink);border-radius:5px}
+.big{min-height:66px;border-radius:22px;background:var(--ink);color:#fff;display:flex;align-items:center;justify-content:center;gap:10px;font-size:19px;font-weight:900;width:100%;padding:0 14px;line-height:1.25}
+.big.light{background:#fff;color:var(--ink);flex-direction:column;gap:0}
+.big.light small{font-size:12px;color:var(--muted);font-weight:700}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.rows{display:flex;flex-direction:column;gap:8px}
+.row{min-height:64px;border-radius:20px;background:var(--card);padding:8px 14px 8px 8px;display:flex;align-items:center;gap:12px;width:100%}
+.row .t{width:64px;height:48px;border-radius:14px;background:var(--c);display:grid;place-items:center;font-weight:800;flex:none;font-size:16px}
+.row .m{flex:1;min-width:0;display:flex;flex-direction:column}
+.row .m b{font-size:18px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .m small{font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .r{font-size:13px;color:var(--muted);text-align:right;flex:none}
+.row.req{background:transparent;border:2px dashed var(--ink)}
+.row.past{opacity:.6}
+.row .st{font-size:12px;font-weight:900}
+.gap{min-height:52px;border:2px dashed var(--dash);border-radius:20px;padding:0 14px;display:flex;align-items:center;gap:12px;color:var(--muted);width:100%}
+.gap .num{width:56px;font-weight:700}.gap .g{flex:1;font-weight:700;font-size:14px}.gap .p{font-size:26px;color:var(--ink);line-height:1}
+.banner{width:100%;display:flex;justify-content:space-between;align-items:center;gap:10px;padding:14px 16px;border-radius:20px;background:var(--ink);color:#fff;font-weight:900;margin-bottom:12px}
+.banner.soft{background:var(--soft);color:var(--ink)}
+.banner b{background:#fff;color:var(--ink);border-radius:999px;padding:0 10px;font-size:14px}
+.empty{text-align:center;color:var(--muted);padding:26px 8px}
+.link{color:var(--muted);font-weight:700;font-size:14px;padding:12px 6px;display:block}
+.sum{font-size:13px;color:var(--muted);margin:14px 6px 0;font-weight:700}
+nav.tabs{position:fixed;left:0;right:0;bottom:0;background:rgba(255,247,238,.95);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);padding-bottom:env(safe-area-inset-bottom);z-index:20}
+nav.tabs .in{max-width:520px;margin:0 auto;height:84px;display:flex;align-items:center;justify-content:space-around;padding:0 30px}
+nav.tabs .tb{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:12px;font-weight:700;color:var(--muted);width:64px}
+nav.tabs .tb.on{color:var(--ink)}
+nav.tabs .plus{width:72px;height:72px;border-radius:26px;background:var(--ink);color:#fff;display:grid;place-items:center;margin-top:-30px;box-shadow:0 10px 24px rgba(27,27,31,.25)}
+.layer{position:fixed;inset:0;z-index:40;display:none}.layer.open{display:block}
+#alert-root{z-index:60}
+.bg{position:absolute;inset:0;background:rgba(40,30,22,.55);animation:fd .2s}
+.sheet{position:absolute;left:0;right:0;bottom:0;max-width:520px;margin:0 auto;max-height:94vh;max-height:94dvh;background:var(--bg);border-radius:32px 32px 0 0;display:flex;flex-direction:column;animation:up .25s cubic-bezier(.2,.8,.2,1)}
+.grab{display:flex;justify-content:center;padding:12px 0 0}.grab span{width:40px;height:5px;border-radius:3px;background:var(--dash)}
+.sheet .x{position:absolute;right:14px;top:14px;z-index:2}
+.sbody{overflow:auto;padding:8px 16px calc(24px + env(safe-area-inset-bottom));-webkit-overflow-scrolling:touch}
+.sbody h1{font-size:28px;font-weight:900;margin:14px 56px 14px 6px}
+@keyframes up{from{transform:translateY(60px);opacity:.3}}@keyframes fd{from{opacity:0}}
+.tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.tile{height:92px;border-radius:22px;background:var(--c);padding:12px;display:flex;flex-direction:column;justify-content:space-between;text-align:left}
+.tile b{font-size:18px;font-weight:900;line-height:1.2;word-break:break-all}.tile small{font-size:12px;font-weight:700}
+.tile.on{box-shadow:inset 0 0 0 3px var(--ink)}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{height:44px;padding:0 16px;border-radius:22px;background:var(--soft);font-weight:700;font-size:15px;display:inline-flex;align-items:center;position:relative}
+.chip.on{background:var(--ink);color:#fff}
+.chip input{position:absolute;inset:0;opacity:0;min-height:0;padding:0}
+.slots{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.slot{height:54px;border-radius:18px;background:var(--card);font-size:18px;font-weight:700;display:grid;place-items:center;position:relative}
+.slot.on{background:var(--ink);color:#fff}
+.slot input{position:absolute;inset:0;opacity:0;min-height:0;padding:0}
+.lbl{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin:22px 6px 10px}.lbl h2{font-size:18px;font-weight:900;margin:0}.lbl span{font-size:13px;color:var(--muted);text-align:right}
+.field{display:flex;flex-direction:column;gap:6px;margin-bottom:10px}.field>span{font-size:14px;font-weight:700;color:var(--muted);margin-left:6px}
+.f2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.sugg{display:flex;flex-direction:column;gap:4px;margin:0 0 10px}.sugg button{padding:10px 14px;border-radius:14px;background:var(--soft);font-size:14px;text-align:left}
+details.more{margin:4px 0 12px}details.more summary{list-style:none;color:var(--muted);font-weight:700;padding:10px 6px;cursor:pointer}details.more summary::-webkit-details-marker{display:none}
+.head-card{border-radius:28px;background:var(--c);padding:20px;margin-bottom:12px;display:flex;flex-direction:column;gap:6px}
+.head-card .svc{font-size:30px;font-weight:900;line-height:1.15}
+.kv{background:var(--card);border-radius:20px;padding:4px 16px;margin:0 0 12px}
+.kv div{display:flex;justify-content:space-between;gap:12px;padding:11px 0;border-bottom:1px solid var(--soft)}.kv div:last-child{border:0}.kv dt{color:var(--muted)}.kv dd{margin:0;text-align:right;font-weight:700}
+.acts{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px}.acts.c2{grid-template-columns:1fr 1fr}.acts.c1{grid-template-columns:1fr}
+.btn{min-height:54px;border-radius:18px;background:var(--card);font-weight:900;display:flex;align-items:center;justify-content:center;gap:6px;text-decoration:none;color:inherit;padding:0 12px;text-align:center;line-height:1.25}
+.btn.ink{background:var(--ink);color:#fff}.btn.ghost{background:transparent;color:var(--muted)}.btn.red{color:var(--red)}
+.btn small{display:block;font-size:12px;font-weight:700;opacity:.75}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;background:var(--soft);border-radius:22px;padding:4px;margin-bottom:16px}
+.seg button{height:44px;border-radius:18px;font-weight:700;color:var(--muted);text-align:center}.seg button.on{background:var(--ink);color:#fff}
+.total{border-radius:30px;background:var(--ink);color:#fff;padding:22px;display:flex;flex-direction:column;gap:4px}
+.total .v{font-size:52px;font-weight:800;letter-spacing:-1px;line-height:1.05}.total small{color:#D9D3CC;font-size:14px}
+.stack{display:flex;height:14px;border-radius:7px;overflow:hidden;gap:3px;margin-top:14px}.stack i{background:var(--c)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.stile{border-radius:24px;background:var(--c);padding:16px;display:flex;flex-direction:column}.stile b{font-size:24px;font-weight:800}.stile span{font-size:13px;font-weight:700}
+.list{background:var(--card);border-radius:22px;overflow:hidden}
+.li{display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--soft);width:100%;min-height:56px}.li:last-child{border:0}
+.li .g{flex:1;min-width:0}.li small{display:block;color:var(--muted);font-size:13px}
+.dot{width:16px;height:16px;border-radius:50%;background:var(--c);flex:none}
+.tog{appearance:none;-webkit-appearance:none;width:52px;height:32px;border-radius:999px;background:var(--line);position:relative;flex:none;min-height:0;padding:0;border:0;transition:.2s;cursor:pointer}
+.tog:checked{background:var(--ink)}.tog::after{content:"";position:absolute;top:4px;left:4px;width:24px;height:24px;border-radius:50%;background:#fff;transition:.2s}.tog:checked::after{left:24px}
+.hrs .li{flex-wrap:wrap;gap:8px}.hrs .wd{width:40px;font-weight:900;flex:none}
+.hrs .tm{display:flex;align-items:center;gap:6px;flex:1 1 190px;min-width:0}
+.hrs input[type=time]{width:auto;flex:1;min-width:0;min-height:40px;padding:6px 8px;border-radius:12px;background:var(--soft);font-size:14px}
+h3{font-size:14px;font-weight:900;margin:22px 6px 8px;color:var(--muted)}
+.note{font-size:13px;color:var(--muted);margin:8px 6px;line-height:1.6}
+.colors{display:flex;gap:10px;flex-wrap:wrap}.colors button{width:40px;height:40px;border-radius:50%;background:var(--c)}.colors button.on{box-shadow:0 0 0 3px var(--bg),0 0 0 5px var(--ink)}
+.mv{display:flex;flex-direction:column;gap:8px;margin:4px 0 14px}
+#toast{position:fixed;left:50%;bottom:calc(120px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--ink);color:#fff;padding:12px 20px;border-radius:999px;font-size:15px;font-weight:700;opacity:0;pointer-events:none;transition:.25s;z-index:80;white-space:nowrap}
+#toast.show{opacity:1}
+.hidden{display:none!important}
+.login{max-width:360px;margin:14vh auto 0;display:flex;flex-direction:column;gap:12px}
+.err{color:var(--red);font-size:14px;min-height:20px}
+</style>
+</head>
+<body>
+<div id="app"><div class="empty">載入中…</div></div>
+<nav class="tabs hidden" id="tabs" aria-label="主選單"><div class="in">
+  <button class="tb" data-tab="day"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="4"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>行程</button>
+  <button class="plus" id="plus" aria-label="新增預約"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
+  <button class="tb" data-tab="more"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M5 20V12M12 20V5M19 20v-9"/></svg>管理</button>
+</div></nav>
+<div class="layer" id="sheet-root"></div>
+<div class="layer" id="alert-root"></div>
+<div id="toast" role="status"></div>
+<input type="file" id="import-file" accept="application/json,.json" class="hidden">
+
+<script type="module">
+/* ============================================================
+   雲端設定來源（優先順序）：
+   1. config.js 的 window.TONY_CONFIG.firebase
+   2. 在 APP「管理 → 設定 → 雲端同步」貼上的設定（存在這支手機）
+   都沒有 = 單機版（資料只存在這支手機）
+   ============================================================ */
+const LS_FB = 'tony-firebase-config', LS_LOCAL = 'salon-app-v1';
+const SDK = (window.TONY_CONFIG && window.TONY_CONFIG.sdkBase) || 'https://www.gstatic.com/firebasejs/10.12.2/';
+function readConfig() {
+  const c = window.TONY_CONFIG && window.TONY_CONFIG.firebase;
+  if (c && c.apiKey && c.projectId) return [c, 'file'];
+  try { const s = JSON.parse(localStorage.getItem(LS_FB)); if (s && s.apiKey && s.projectId) return [s, 'local']; } catch {}
+  return [null, ''];
+}
+const [FIREBASE_CONFIG, CFG_SRC] = readConfig();
+const b64url = s => btoa(unescape(encodeURIComponent(s))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+function bookLink() {
+  const u = new URL('book.html', location.href); u.search = ''; u.hash = '';
+  if (CFG_SRC === 'local') { const { apiKey, authDomain, projectId, appId } = FIREBASE_CONFIG; u.hash = 'c=' + b64url(JSON.stringify({ apiKey, authDomain, projectId, appId })); }
+  return u.href;
+}
+function parseConfig(text) {
+  let t = String(text || '').trim(); const i = t.indexOf('{'), j = t.lastIndexOf('}');
+  if (i < 0 || j < i) throw new Error('找不到設定內容');
+  t = t.slice(i, j + 1).replace(/\/\/.*$/gm, '').replace(/([{,]\s*)([A-Za-z_$][\w$]*)\s*:/g, '$1"$2":').replace(/'/g, '"').replace(/,\s*}/g, '}');
+  const o = JSON.parse(t);
+  if (!o.apiKey || !o.projectId) throw new Error('缺少 apiKey 或 projectId');
+  return o;
+}
+function rulesText(email) {
+  return `rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isOwner() {
+      return request.auth != null && request.auth.token.email == '${email}';
+    }
+    match /public/{doc} { allow read: if true; allow write: if isOwner(); }
+    match /busy/{date} { allow read: if true; allow write: if isOwner(); }
+    match /holds/{id} {
+      allow read: if true;
+      allow create: if request.resource.data.keys().hasOnly(['date','s','e','createdAt'])
+        && request.resource.data.date is string && request.resource.data.date.size() == 10
+        && request.resource.data.s is int && request.resource.data.e is int
+        && request.resource.data.e > request.resource.data.s && request.resource.data.e - request.resource.data.s <= 720
+        && request.resource.data.createdAt is int;
+      allow delete: if isOwner();
+    }
+    match /requests/{id} {
+      allow create: if request.resource.data.keys().hasOnly(['date','start','duration','price','services','name','phone','note','status','createdAt','holdId'])
+        && request.resource.data.status == 'pending'
+        && request.resource.data.date is string && request.resource.data.date.size() == 10
+        && request.resource.data.start is string && request.resource.data.start.size() == 5
+        && request.resource.data.duration is int && request.resource.data.duration > 0 && request.resource.data.duration <= 720
+        && request.resource.data.price is number
+        && request.resource.data.services is list && request.resource.data.services.size() <= 10
+        && request.resource.data.name is string && request.resource.data.name.size() <= 30
+        && request.resource.data.phone is string && request.resource.data.phone.size() >= 8 && request.resource.data.phone.size() <= 15
+        && request.resource.data.note is string && request.resource.data.note.size() <= 200
+        && request.resource.data.createdAt is int;
+      allow read, update, delete: if isOwner();
+    }
+    match /{coll}/{id} { allow read, write: if isOwner(); }
+  }
+}`;
+}
+
+/* ---------- 工具 ---------- */
+const $ = (s, el = document) => el.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pad = n => String(n).padStart(2, '0');
+const toMin = hm => { const [h, m] = String(hm).split(':').map(Number); return h * 60 + m; };
+const toHM = m => pad(Math.floor(m / 60)) + ':' + pad(m % 60);
+const ds = d => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+const parseDs = s => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
+const addDays = (s, n) => { const d = parseDs(s); d.setDate(d.getDate() + n); return ds(d); };
+const today = () => ds(new Date());
+const nowMin = () => { const d = new Date(); return d.getHours() * 60 + d.getMinutes(); };
+const WD = '日一二三四五六';
+const money = n => '$' + Math.round(Number(n) || 0).toLocaleString('zh-TW');
+const durText = m => m >= 60 ? Math.floor(m / 60) + ' 小時' + (m % 60 ? ' ' + (m % 60) + ' 分' : '') : m + ' 分';
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+const byStart = (a, b) => (a.date || '').localeCompare(b.date || '') || toMin(a.start) - toMin(b.start);
+const dateLabel = s => { const d = parseDs(s); return `${d.getMonth() + 1}/${d.getDate()}（${WD[d.getDay()]}）`; };
+const dayWord = s => s === today() ? '今天' : s === addDays(today(), 1) ? '明天' : dateLabel(s);
+const PALETTE = ['#FF8A65', '#6EC6FF', '#B79CFF', '#FFD54A', '#63D9B5', '#F49AC1', '#A3D977', '#D7C3A8'];
+const STATUS = { booked: '已預約', done: '已完成', noshow: '未到', cancelled: '已取消' };
+const ICON = {
+  check: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+  clock: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+  bell: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16V11a6 6 0 0112 0v5l1.5 2h-15zM10 20.5a2 2 0 004 0"/></svg>',
+  x: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>'
+};
+let toastT;
+function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2400); }
+function upsert(arr, obj) { const i = arr.findIndex(x => x.id === obj.id); if (i >= 0) arr[i] = obj; else arr.push(obj); }
+const clean = o => JSON.parse(JSON.stringify(o));
+
+/* ---------- 預設資料 ---------- */
+const DEFAULT_SETTINGS = {
+  shopName: '我的髮型工作室', slotStep: 30, bookAheadDays: 30, holidays: [], alerts: true, keepAwake: true,
+  hours: {
+    0: { open: true, start: '10:00', end: '19:00' }, 1: { open: false, start: '10:00', end: '20:00' },
+    2: { open: true, start: '10:00', end: '20:00' }, 3: { open: true, start: '10:00', end: '20:00' },
+    4: { open: true, start: '10:00', end: '20:00' }, 5: { open: true, start: '10:00', end: '20:00' },
+    6: { open: true, start: '10:00', end: '19:00' } }
+};
+const DEFAULT_SERVICES = [['剪髮', 60, 500], ['洗髮', 30, 300], ['燙髮', 150, 2500], ['染髮', 120, 2000], ['護髮', 45, 800]];
+const defaultServices = () => DEFAULT_SERVICES.map(([name, duration, price], i) => ({ id: 's' + (i + 1), name, duration, price, color: PALETTE[i], active: true, order: i }));
+
+/* ---------- 狀態 ---------- */
+const S = { settings: null, services: [], customers: [], bookings: [], requests: [] };
+const U = { tab: 'day', more: 'income', date: today(), q: '', month: today().slice(0, 7), showEnded: false };
+let backend;
+
+const services = () => [...S.services].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+const activeServices = () => services().filter(s => s.active !== false);
+const svcNames = b => (b.services || []).map(s => s.name).join('＋') || '預約';
+const colorOf = b => { const s = b.services?.[0]; return (s && (S.services.find(x => x.id === s.id)?.color || s.color)) || PALETTE[7]; };
+const who = b => b.customerName || (b.phone ? '尾號 ' + b.phone.replace(/\D/g, '').slice(-3) : '');
+const endOf = b => toMin(b.start) + b.duration;
+
+function dayHours(date) {
+  if (!S.settings || (S.settings.holidays || []).includes(date)) return null;
+  const h = S.settings.hours?.[parseDs(date).getDay()];
+  return h && h.open ? [toMin(h.start), toMin(h.end)] : null;
+}
+function busyRanges(date, excludeId) {
+  const r = S.bookings.filter(b => b.date === date && b.status === 'booked' && b.id !== excludeId).map(b => [toMin(b.start), endOf(b)]);
+  S.requests.filter(q => q.date === date && q.id !== excludeId).forEach(q => r.push([toMin(q.start), toMin(q.start) + q.duration]));
+  return r;
+}
+const overlaps = (s, e, ranges) => ranges.some(([a, b]) => s < b && e > a);
+function freeStarts(date, dur, excludeId) {
+  const h = dayHours(date); if (!h || !dur) return [];
+  const busy = busyRanges(date, excludeId), step = S.settings.slotStep || 30, out = [];
+  const t = date === today() ? nowMin() : (date < today() ? Infinity : -1);
+  for (let s = h[0]; s + dur <= h[1]; s += step) { if (s <= t) continue; if (overlaps(s, s + dur, busy)) continue; out.push(s); }
+  return out;
+}
+function ensureCustomer(name, phone, cid) {
+  if (!name && !phone && !cid) return null;
+  let c = (cid && S.customers.find(x => x.id === cid)) || (phone && S.customers.find(x => x.phone === phone)) || (!phone && name && S.customers.find(x => x.name === name));
+  if (!c) { c = { id: uid(), name: name || '', phone: phone || '', note: '', createdAt: Date.now() }; backend.put('customers', c); }
+  else if ((name && c.name !== name) || (phone && c.phone !== phone)) { c = { ...c, name: name || c.name, phone: phone || c.phone }; backend.put('customers', c); }
+  return c;
+}
+const todayBooked = () => S.bookings.filter(b => b.date === today() && b.status === 'booked').sort(byStart);
+const current = () => todayBooked().find(b => toMin(b.start) <= nowMin()) || null;   // 最早一筆「已開始但尚未完成」
+const nextUp = () => todayBooked().find(b => toMin(b.start) > nowMin()) || null;
+
+/* ---------- 單機版儲存 ---------- */
+function localBackend() {
+  const KEY = 'salon-app-v1';
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify({ settings: S.settings, services: S.services, customers: S.customers, bookings: S.bookings })); } catch (e) { toast('無法儲存：' + e.message); } };
+  return {
+    mode: 'local',
+    async start() {
+      let d = null; try { d = JSON.parse(localStorage.getItem(KEY)); } catch {}
+      if (d && d.settings) { Object.assign(S, d); S.settings = { ...clean(DEFAULT_SETTINGS), ...d.settings }; }
+      else { S.settings = clean(DEFAULT_SETTINGS); S.services = defaultServices(); save(); }
+      S.requests = [];
+      try { navigator.storage?.persist?.(); } catch {}
+      showShell(); render(); keepAwake();
+    },
+    put(coll, obj) { upsert(S[coll], obj); save(); render(); },
+    remove(coll, id) { S[coll] = S[coll].filter(x => x.id !== id); save(); render(); },
+    saveSettings(s) { S.settings = s; save(); render(); },
+    replaceAll(d) { S.settings = { ...clean(DEFAULT_SETTINGS), ...d.settings }; S.services = d.services || []; S.customers = d.customers || []; S.bookings = d.bookings || []; save(); render(); }
+  };
+}
+
+/* ---------- 雲端版（Firebase） ---------- */
+async function cloudBackend() {
+  const [{ initializeApp }, A, F] = await Promise.all([import(SDK + 'firebase-app.js'), import(SDK + 'firebase-auth.js'), import(SDK + 'firebase-firestore.js')]);
+  const app = initializeApp(FIREBASE_CONFIG), auth = A.getAuth(app), db = F.getFirestore(app);
+  let unsubs = [], pubT, deniedShown = false;
+  const fail = e => {
+    if (e && e.code === 'permission-denied') { if (!deniedShown) { deniedShown = true; showRulesHelp(true); } return; }
+    toast('同步失敗：' + (e.code || e.message));
+  };
+  const syncBusy = date => { if (date) F.setDoc(F.doc(db, 'busy', date), { ranges: busyRanges(date).map(([s, e]) => ({ s, e })) }).catch(fail); };
+  const syncPublic = () => { clearTimeout(pubT); pubT = setTimeout(() => {
+    if (!S.settings) return; const st = S.settings;
+    F.setDoc(F.doc(db, 'public', 'info'), clean({ shopName: st.shopName, shopPhone: st.shopPhone || '', shopLine: st.shopLine || '', shopAddress: st.shopAddress || '',
+      slotStep: st.slotStep, bookAheadDays: st.bookAheadDays, holidays: st.holidays, hours: st.hours,
+      services: activeServices().map(s => ({ id: s.id, name: s.name, duration: s.duration, price: s.price, color: s.color || '' })) })).catch(fail);
+  }, 800); };
+  const after = (coll, dates) => { if (coll === 'bookings' || coll === 'requests') new Set(dates.filter(Boolean)).forEach(syncBusy); if (coll === 'services') syncPublic(); };
+  async function seed() {
+    const b = F.writeBatch(db);
+    b.set(F.doc(db, 'settings', 'main'), clean(DEFAULT_SETTINGS));
+    defaultServices().forEach(({ id, ...s }) => b.set(F.doc(db, 'services', id), s));
+    await b.commit();
+  }
+  async function cleanHolds() {
+    try {
+      const snap = await F.getDocs(F.query(F.collection(db, 'holds'), F.where('date', '<', today())));
+      snap.docs.forEach(d => F.deleteDoc(d.ref).catch(() => {}));
+    } catch {}
+  }
+  function offerMigrate() {
+    let d = null; try { d = JSON.parse(localStorage.getItem(LS_LOCAL)); } catch {}
+    if (!d || !(d.bookings || []).length || localStorage.getItem('tony-migrated') || S.bookings.length) return;
+    localStorage.setItem('tony-migrated', '1');
+    if (confirm(`這支手機有單機版的 ${d.bookings.length} 筆預約、${(d.customers || []).length} 位客人，要上傳到雲端嗎？`)) {
+      this.replaceAll(d).then(() => toast('上傳完成'), fail);
+    }
+  }
+  function subscribe() {
+    let seeded = false, first = true, bkInit = false;
+    unsubs.push(F.onSnapshot(F.doc(db, 'settings', 'main'), snap => {
+      if (!snap.exists()) { if (!seeded) { seeded = true; seed().catch(fail); } return; }
+      S.settings = { ...clean(DEFAULT_SETTINGS), ...snap.data() }; render();
+      if (first) { first = false; setTimeout(syncPublic, 1500); keepAwake(); cleanHolds(); }
+    }, fail));
+    for (const c of ['services', 'customers', 'bookings']) unsubs.push(F.onSnapshot(F.collection(db, c), snap => {
+      S[c] = snap.docs.map(d => ({ ...d.data(), id: d.id })); render();
+      if (c === 'bookings' && !bkInit) { bkInit = true; setTimeout(() => offerMigrate.call(api), 1200); }
+    }, fail));
+    let reqInit = false;
+    unsubs.push(F.onSnapshot(F.collection(db, 'requests'), snap => {
+      const added = snap.docChanges().some(ch => ch.type === 'added');
+      S.requests = snap.docs.map(d => ({ ...d.data(), id: d.id }));
+      if (reqInit && added) { toast('有新的線上預約'); chime(); sysNotify('新的線上預約', '打開 Tony老師 確認'); }
+      reqInit = true;
+      const dates = new Set(snap.docChanges().map(ch => ch.doc.data().date)); render(); dates.forEach(syncBusy);
+    }, fail));
+  }
+  const api = {
+    mode: 'cloud',
+    email: () => auth.currentUser?.email || '',
+    start() {
+      A.onAuthStateChanged(auth, u => {
+        unsubs.forEach(f => f()); unsubs = [];
+        if (!u) { S.settings = null; showLogin(); return; }
+        showShell(); render(); subscribe();
+      });
+    },
+    async login(email, pw) { await A.signInWithEmailAndPassword(auth, email, pw); },
+    async resetPw(email) { await A.sendPasswordResetEmail(auth, email); },
+    logout() { A.signOut(auth); },
+    put(coll, obj) {
+      const prev = S[coll].find(x => x.id === obj.id); upsert(S[coll], obj); render();
+      const { id, ...data } = obj; F.setDoc(F.doc(db, coll, id), clean(data)).catch(fail);
+      after(coll, [obj.date, prev?.date]);
+    },
+    remove(coll, id) {
+      const prev = S[coll].find(x => x.id === id); S[coll] = S[coll].filter(x => x.id !== id); render();
+      F.deleteDoc(F.doc(db, coll, id)).catch(fail);
+      if (coll === 'requests' && prev?.holdId) F.deleteDoc(F.doc(db, 'holds', prev.holdId)).catch(() => {});
+      after(coll, [prev?.date]);
+    },
+    saveSettings(s) { S.settings = s; render(); F.setDoc(F.doc(db, 'settings', 'main'), clean(s)).catch(fail); syncPublic(); },
+    async replaceAll(d) {
+      const items = [['settings', { id: 'main', ...d.settings }], ...['services', 'customers', 'bookings'].flatMap(c => (d[c] || []).map(x => [c, x]))];
+      for (let i = 0; i < items.length; i += 400) {
+        const b = F.writeBatch(db);
+        items.slice(i, i + 400).forEach(([c, { id, ...x }]) => b.set(F.doc(db, c, id), clean(x)));
+        await b.commit();
+      }
+      new Set((d.bookings || []).map(b => b.date).filter(x => x >= today())).forEach(syncBusy); syncPublic();
+    }
+  };
+  return api;
+}
+
+/* ---------- 聲音、震動、螢幕常亮 ---------- */
+let actx = null, audioOK = false, wake = null;
+function unlockAudio() {
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state === 'suspended') actx.resume();
+    const o = actx.createOscillator(), g = actx.createGain(); g.gain.value = 0; o.connect(g).connect(actx.destination); o.start(); o.stop(actx.currentTime + 0.02);
+    if (!audioOK) { audioOK = true; if (U.tab === 'day' && !sheetOpen()) render(); }
+  } catch {}
+}
+document.addEventListener('pointerdown', unlockAudio, true);
+function chime() {
+  try { navigator.vibrate?.([300, 120, 300, 120, 300]); } catch {}
+  if (!actx) return;
+  try {
+    if (actx.state === 'suspended') actx.resume();
+    const t0 = actx.currentTime;
+    [[0, 880], [0.22, 1175], [0.44, 1568], [0.9, 880], [1.12, 1175], [1.34, 1568]].forEach(([dt, f]) => {
+      const o = actx.createOscillator(), g = actx.createGain(); o.type = 'sine'; o.frequency.value = f;
+      g.gain.setValueAtTime(0.0001, t0 + dt); g.gain.exponentialRampToValueAtTime(0.5, t0 + dt + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dt + 0.32);
+      o.connect(g).connect(actx.destination); o.start(t0 + dt); o.stop(t0 + dt + 0.35);
+    });
+  } catch {}
+}
+async function keepAwake() {
+  if (!S.settings?.keepAwake || !('wakeLock' in navigator) || document.hidden) return;
+  try { if (!wake || wake.released) wake = await navigator.wakeLock.request('screen'); } catch {}
+}
+function sysNotify(title, body) {
+  try { if (document.hidden && 'Notification' in window && Notification.permission === 'granted') new Notification(title, { body, tag: 'salon-late', renotify: true }); } catch {}
+}
+
+/* ---------- 外框 ---------- */
+function showShell() { $('#tabs').classList.remove('hidden'); }
+function showLogin() {
+  $('#tabs').classList.add('hidden');
+  $('#app').innerHTML = `<form class="login" id="login">
+    <img src="icons/mark.svg" alt="" width="88" height="88" style="align-self:center">
+    <h1 style="margin:0;font-size:28px;font-weight:900;text-align:center">Tony老師<small style="display:block;font-size:14px;color:var(--muted);font-weight:700">設計師登入</small></h1>
+    <input id="l-email" type="email" placeholder="Email" autocomplete="username" required aria-label="Email">
+    <input id="l-pw" type="password" placeholder="密碼" autocomplete="current-password" required aria-label="密碼">
+    <button class="big">登入</button><div class="err" id="l-err"></div>
+    <button type="button" class="link" id="l-reset" style="text-align:center">忘記密碼</button>
+    ${CFG_SRC === 'local' ? '<button type="button" class="link" id="l-off" style="text-align:center">改用單機版</button>' : ''}</form>`;
+  $('#login').onsubmit = async e => {
+    e.preventDefault(); $('#l-err').textContent = '';
+    try { await backend.login($('#l-email').value.trim(), $('#l-pw').value); }
+    catch (err) { $('#l-err').textContent = /network/i.test(err.code || '') ? '連不上網路，請稍後再試' : '登入失敗，請確認帳號密碼'; }
+  };
+  $('#l-reset').onclick = async () => {
+    const em = $('#l-email').value.trim(); if (!em) { $('#l-err').textContent = '請先輸入 Email'; return; }
+    try { await backend.resetPw(em); $('#l-err').textContent = '已寄出重設密碼信，請收信'; } catch { $('#l-err').textContent = '寄送失敗，請確認 Email'; }
+  };
+  const off = $('#l-off'); if (off) off.onclick = () => { if (confirm('改回單機版？（雲端資料不會被刪除）')) { localStorage.removeItem(LS_FB); location.reload(); } };
+}
+function showRulesHelp(auto) {
+  const email = backend.email ? backend.email() : '';
+  const rules = rulesText(email || 'your-email@example.com');
+  const url = `https://console.firebase.google.com/project/${encodeURIComponent(FIREBASE_CONFIG.projectId)}/firestore/rules`;
+  openSheet(`<h1>${auto ? '還差一步：貼上安全規則' : '資料庫安全規則'}</h1>
+    <p class="note">這份規則只允許「${esc(email)}」讀寫店裡的資料，客人只能送出預約、看到空檔。</p>
+    <ol class="note" style="padding-left:22px;margin-top:0"><li>按「複製規則」</li><li>按「開啟 Firebase」→ 把原本內容全部刪掉、貼上 →「發布」</li><li>回到這裡按「我貼好了」</li></ol>
+    <textarea readonly rows="6" style="font:12px/1.4 ui-monospace,Menlo,monospace">${esc(rules)}</textarea>
+    <div class="acts c2" style="margin-top:10px"><button class="btn ink" data-s="copy">複製規則</button><a class="btn" href="${url}" target="_blank" rel="noopener">開啟 Firebase</a></div>
+    <button class="big" data-s="done">我貼好了，重新載入</button>`, {
+    copy: () => navigator.clipboard?.writeText(rules).then(() => toast('已複製'), () => toast('請長按文字框全選複製')),
+    done: () => location.reload()
+  });
+}
+function cloudSetup() {
+  openSheet(`<h1>開啟雲端同步</h1>
+    <p class="note">開啟後：客人可以線上預約、換手機資料不會不見。需要一個免費的 Firebase 專案（照操作手冊附錄，約 15 分鐘）。</p>
+    <label class="field"><span>貼上 Firebase 設定（firebaseConfig 那一整段）</span><textarea id="cfg-in" rows="7" placeholder="const firebaseConfig = {\n  apiKey: &quot;...&quot;,\n  projectId: &quot;...&quot;,\n  ...\n};" style="font:13px/1.4 ui-monospace,Menlo,monospace"></textarea></label>
+    <div class="err" id="cfg-err"></div>
+    <button class="big" data-s="save">儲存並切換到雲端</button>
+    <p class="note">切換後用 Firebase 裡建立的設計師帳號登入。這支手機上的單機資料，登入後可以選擇上傳。</p>`, {
+    save: () => {
+      try { const o = parseConfig($('#cfg-in').value); localStorage.setItem(LS_FB, JSON.stringify(o)); toast('已儲存，切換中…'); setTimeout(() => location.reload(), 600); }
+      catch (e) { $('#cfg-err').textContent = '看不懂這段設定：' + e.message; }
+    }
+  });
+}
+const sheetOpen = () => $('#sheet-root').classList.contains('open');
+
+function render() {
+  if (!S.settings) { if (backend?.mode === 'cloud' && $('#login')) return; $('#app').innerHTML = '<div class="empty">載入中…</div>'; return; }
+  document.querySelectorAll('#tabs [data-tab]').forEach(b => b.classList.toggle('on', b.dataset.tab === U.tab));
+  const y = window.scrollY;
+  $('#app').innerHTML = U.tab === 'day' ? viewDay() : viewMore();
+  if (U.tab === 'more' && U.more === 'cust') renderCustList();
+  window.scrollTo(0, y);
+}
+
+/* ---------- 行程頁 ---------- */
+function viewDay() {
+  const d = U.date, isT = d === today(), dt = parseDs(d), n = nowMin(), step = S.settings.slotStep || 30;
+  let h = `<div class="hd"><button class="ib" data-act="day" data-n="-1" aria-label="前一天">‹</button>
+    <h1>${isT ? '今天' : '週' + WD[dt.getDay()]} <span class="num">${dt.getMonth() + 1}/${dt.getDate()}</span><input type="date" data-chg="jump" value="${d}" aria-label="選擇日期"></h1>
+    <button class="ib" data-act="day" data-n="1" aria-label="後一天">›</button>
+    ${isT ? `<span class="clock num" id="clock">${toHM(n)}</span>` : '<button class="pill" data-act="today" style="margin-left:auto">回今天</button>'}</div>`;
+  if (S.settings.alerts !== false && !audioOK) h += `<button class="banner soft" data-act="unlock"><span>點一下，開啟超時提醒聲音</span>${ICON.bell}</button>`;
+  if (S.requests.length) h += `<button class="banner" data-act="reqs"><span>線上預約待確認</span><b class="num">${S.requests.length}</b></button>`;
+  const all = S.bookings.filter(b => b.date === d);
+  const booked = all.filter(b => b.status === 'booked').sort(byStart);
+  const ended = all.filter(b => b.status !== 'booked').sort(byStart);
+  const reqs = S.requests.filter(q => q.date === d);
+  const hrs = dayHours(d);
+  let card = null, mode = '';
+  if (isT) { const c = current(); if (c) { card = c; mode = n >= endOf(c) ? 'late' : 'cur'; } else { const nx = nextUp(); if (nx) { card = nx; mode = 'next'; } } }
+  if (!hrs) h += '<div class="empty" style="padding-bottom:6px">這天是公休日</div>';
+  if (card) h += nowCard(card, mode);
+  const items = [
+    ...booked.filter(b => b !== card).map(b => ({ s: toMin(b.start), html: rowHtml(b, isT && endOf(b) <= n) })),
+    ...reqs.map(q => ({ s: toMin(q.start), html: reqRow(q) }))];
+  const floor = d < today() ? Infinity : isT ? Math.ceil((n + 1) / step) * step : -Infinity;
+  if (hrs && floor !== Infinity) {
+    const blocks = [...booked, ...reqs].map(x => [toMin(x.start), toMin(x.start) + x.duration]).sort((a, b) => a[0] - b[0]);
+    let cur = Math.max(hrs[0], floor);
+    for (const [s, e] of blocks) { if (s - cur >= step) items.push({ s: cur, html: gapHtml(cur, s) }); cur = Math.max(cur, e); }
+    if (hrs[1] - cur >= step) items.push({ s: cur, html: gapHtml(cur, hrs[1]) });
+  }
+  items.sort((a, b) => a.s - b.s);
+  if (items.length) h += `<h2 class="sec">${card ? '接下來' : '預約'}</h2><div class="rows">${items.map(x => x.html).join('')}</div>`;
+  else if (!card) h += hrs ? `<div class="empty">${floor === Infinity ? '這天沒有預約' : '今天已經沒有空檔了'}</div>` : `<button class="gap" data-act="new"><span class="num"></span><span class="g">仍要新增預約</span><span class="p">+</span></button>`;
+  if (!hrs && items.length) h += `<button class="gap" data-act="new" style="margin-top:8px"><span class="num"></span><span class="g">仍要新增預約</span><span class="p">+</span></button>`;
+  const live = all.filter(b => b.status === 'booked' || b.status === 'done');
+  if (live.length) h += `<div class="sum">${live.length} 組・預估 ${money(live.reduce((a, b) => a + (b.price || 0), 0))}</div>`;
+  if (ended.length) {
+    h += `<button class="link" data-act="ended">${U.showEnded ? '收起' : '查看'}已結束（${ended.length}）</button>`;
+    if (U.showEnded) h += `<div class="rows">${ended.map(b => rowHtml(b, true)).join('')}</div>`;
+  }
+  return h;
+}
+function nowCard(b, mode) {
+  const s = toMin(b.start), e = endOf(b), n = nowMin();
+  const badge = mode === 'late' ? `${ICON.clock}${n - e > 0 ? `超時 ${n - e} 分` : '時間到了'}` : mode === 'cur' ? '進行中' : `下一位・${s - n < 60 ? (s - n) + ' 分鐘後' : '還有 ' + durText(s - n)}`;
+  const tags = [who(b), b.note].filter(Boolean).map(t => `<span class="tag">${esc(t)}</span>`).join('');
+  return `<div class="now ${mode === 'late' ? 'late' : ''}" style="--c:${colorOf(b)}">
+    <div class="top"><span class="badge">${badge}</span><span class="num" style="font-weight:700">${b.start} – ${toHM(e)}</span></div>
+    <button class="svc" data-act="bk" data-id="${b.id}">${esc(svcNames(b))}</button>
+    ${tags ? `<div class="tags">${tags}</div>` : ''}
+    ${mode === 'cur' ? `<div class="bar"><i style="width:${Math.min(100, Math.max(3, (n - s) / (e - s) * 100))}%"></i></div><span style="font-size:13px;font-weight:700;margin-top:-6px">還剩 ${durText(e - n)}</span>` : ''}
+    ${mode === 'late' ? `<div class="two"><button class="big light" data-act="shift" data-id="${b.id}">後面順延<small>${planShift(b, 15).moves.length ? '會影響後面的預約' : '後面沒有預約'}</small></button><button class="big" data-act="done" data-id="${b.id}">${ICON.check}做完了</button></div>`
+      : mode === 'cur' ? `<button class="big" data-act="done" data-id="${b.id}">${ICON.check}做完了・${money(b.price)}</button>` : ''}
+  </div>`;
+}
+function rowHtml(b, past) {
+  const st = b.status !== 'booked' ? `<span class="st">${STATUS[b.status]}</span>` : past ? '<span class="st">未按完成</span>' : '';
+  return `<button class="row ${past ? 'past' : ''}" data-act="bk" data-id="${b.id}" style="--c:${colorOf(b)}">
+    <span class="t num">${b.start}</span>
+    <span class="m"><b>${esc(svcNames(b))}</b>${who(b) || b.source === 'online' ? `<small>${esc(who(b))}${b.source === 'online' ? '・線上' : ''}</small>` : ''}</span>
+    <span class="r">${st || '至 ' + toHM(endOf(b))}</span></button>`;
+}
+function reqRow(q, withDate) {
+  return `<button class="row req" data-act="req" data-id="${q.id}" style="--c:${q.services?.[0]?.color || PALETTE[7]}">
+    <span class="t num">${q.start}</span>
+    <span class="m"><b>${esc((q.services || []).map(s => s.name).join('＋'))}</b><small>${withDate ? dayWord(q.date) + '・' : ''}待確認</small></span>
+    <span class="r">${money(q.price)}</span></button>`;
+}
+const gapHtml = (a, b) => `<button class="gap" data-act="new" data-start="${a}"><span class="num">${toHM(a)}</span><span class="g">空檔 ${durText(b - a)}</span><span class="p">+</span></button>`;
+
+/* ---------- 管理頁 ---------- */
+function viewMore() {
+  const seg = [['income', '收入'], ['cust', '客人'], ['set', '設定']].map(([k, l]) => `<button class="${U.more === k ? 'on' : ''}" data-act="seg" data-v="${k}">${l}</button>`).join('');
+  return `<div class="seg" role="tablist">${seg}</div>` + ({ income: viewIncome, cust: viewCust, set: viewSet })[U.more]();
+}
+function viewIncome() {
+  const m = U.month, [y, mo] = m.split('-').map(Number);
+  const list = S.bookings.filter(b => b.date.startsWith(m));
+  const done = list.filter(b => b.status === 'done'), booked = list.filter(b => b.status === 'booked');
+  const sum = a => a.reduce((t, b) => t + (b.price || 0), 0);
+  const rev = sum(done);
+  const by = {};
+  done.forEach(b => (b.services || []).forEach(s => { const k = s.name; (by[k] ||= { n: 0, r: 0, c: S.services.find(x => x.id === s.id)?.color || s.color || PALETTE[7] }); by[k].n++; by[k].r += s.price || 0; }));
+  const rows = Object.entries(by).sort((a, b) => b[1].r - a[1].r);
+  const tot = Math.max(1, rows.reduce((a, [, v]) => a + v.r, 0));
+  return `<div class="hd"><button class="ib" data-act="mon" data-n="-1" aria-label="上個月">‹</button><h1 style="flex:1;text-align:center">${y} 年 ${mo} 月</h1><button class="ib" data-act="mon" data-n="1" aria-label="下個月">›</button></div>
+    <div class="total"><small style="font-weight:700">已收</small><span class="v num">${money(rev)}</span><small>完成 ${done.length} 組・還有 ${money(sum(booked))} 預約中</small>
+      ${rows.length ? `<div class="stack">${rows.map(([, v]) => `<i style="--c:${v.c};flex:${v.r}"></i>`).join('')}</div>` : ''}</div>
+    ${rows.length ? `<div class="grid2">${rows.map(([k, v]) => `<div class="stile" style="--c:${v.c}"><span>${esc(k)}</span><b class="num">${money(v.r)}</b><span style="font-weight:500">${v.n} 次・${Math.round(v.r / tot * 100)}%</span></div>`).join('')}</div>` : '<div class="empty">這個月還沒有完成的預約</div>'}
+    <p class="note">按下「做完了」的預約才會算進已收。各服務金額依定價計算。</p>`;
+}
+function viewCust() {
+  return `<input type="search" placeholder="搜尋稱呼或電話" data-inp="q" value="${esc(U.q)}" style="margin-bottom:12px">
+    <div class="list" id="cust-list"></div>
+    <button class="btn" data-act="newcust" style="width:100%;margin-top:10px">＋ 新增客人</button>`;
+}
+function custStats(c) {
+  const bs = S.bookings.filter(b => b.customerId === c.id);
+  const done = bs.filter(b => b.status === 'done');
+  const last = bs.filter(b => b.status !== 'cancelled' && b.date <= today()).map(b => b.date).sort().pop();
+  return { bs, visits: done.length, spend: done.reduce((a, b) => a + (b.price || 0), 0), last };
+}
+function renderCustList() {
+  const q = U.q.trim().toLowerCase();
+  const list = S.customers.filter(c => !q || (c.name || '').toLowerCase().includes(q) || (c.phone || '').includes(q))
+    .map(c => ({ c, st: custStats(c) })).sort((a, b) => (b.st.last || '').localeCompare(a.st.last || ''));
+  $('#cust-list').innerHTML = list.length ? list.map(({ c, st }) => `<button class="li" data-act="cust" data-id="${c.id}"><span class="g"><b>${esc(c.name || c.phone || '客人')}</b><small>${esc(c.name ? c.phone : '')}${st.last ? ' 上次 ' + dateLabel(st.last) : ''}</small></span><span class="num" style="color:var(--muted)">${st.visits} 次</span></button>`).join('')
+    : `<div class="empty">${q ? '找不到' : '有留電話或稱呼的預約，會自動建立客人'}</div>`;
+}
+function viewSet() {
+  const st = S.settings, cloud = backend.mode === 'cloud';
+  const hours = [1, 2, 3, 4, 5, 6, 0].map(i => { const h = st.hours[i] || { open: false, start: '10:00', end: '20:00' };
+    return `<div class="li"><span class="wd">週${WD[i]}</span><input type="checkbox" class="tog" aria-label="週${WD[i]}營業" data-chg="hours" data-d="${i}" data-k="open" ${h.open ? 'checked' : ''}>
+      ${h.open ? `<span class="tm"><input type="time" step="900" value="${h.start}" data-chg="hours" data-d="${i}" data-k="start" aria-label="開始"><span>–</span><input type="time" step="900" value="${h.end}" data-chg="hours" data-d="${i}" data-k="end" aria-label="結束"></span>` : '<span class="g" style="color:var(--muted)">公休</span>'}</div>`; }).join('');
+  const hol = (st.holidays || []).filter(x => x >= today()).sort();
+  const canNotify = 'Notification' in window && Notification.permission === 'default';
+  return `<h3>服務項目</h3>
+    <div class="list">${services().map((s, i, a) => `<div class="li" style="--c:${s.color || PALETTE[7]}"><span class="dot"></span>
+      <button class="g" data-act="svc" data-id="${s.id}"><b>${esc(s.name)}</b>${s.active === false ? '（停用）' : ''}<small>${durText(s.duration)}・${money(s.price)}</small></button>
+      <button class="ib" data-act="svcmv" data-id="${s.id}" data-n="-1" ${i ? '' : 'disabled style="opacity:.3"'} aria-label="上移">↑</button>
+      <button class="ib" data-act="svcmv" data-id="${s.id}" data-n="1" ${i < a.length - 1 ? '' : 'disabled style="opacity:.3"'} aria-label="下移">↓</button></div>`).join('')}
+      <button class="li" data-act="svc" style="font-weight:900">＋ 新增服務項目</button></div>
+    <h3>超時提醒</h3>
+    <div class="list">
+      <label class="li"><span class="g"><b>時間到還沒按完成就提醒</b><small>響鈴＋震動，可選擇順延或忽略</small></span><input type="checkbox" class="tog" data-chg="flag" data-k="alerts" ${st.alerts !== false ? 'checked' : ''}></label>
+      <label class="li"><span class="g"><b>保持螢幕開啟</b><small>APP 開著時螢幕不自動關閉，提醒才準時</small></span><input type="checkbox" class="tog" data-chg="flag" data-k="keepAwake" ${st.keepAwake ? 'checked' : ''}></label>
+      <button class="li" data-act="testsound"><span class="g"><b>試聽提醒聲</b></span>${ICON.bell}</button>
+      ${canNotify ? '<button class="li" data-act="notifyperm"><span class="g"><b>允許系統通知</b><small>切到其他 APP 時也嘗試通知（部分手機支援）</small></span></button>' : ''}
+    </div>
+    <h3>營業時間</h3><div class="list hrs">${hours}</div>
+    <h3>公休日・請假</h3>
+    <div class="list">${hol.map(x => `<div class="li"><span class="g">${x.slice(0, 4)} 年 ${dateLabel(x)}</span><button class="btn red" data-act="holdel" data-d="${x}" style="min-height:40px">移除</button></div>`).join('')}
+      <div class="li"><input type="date" id="hol-in" min="${today()}" style="flex:1;background:var(--soft);min-height:44px" aria-label="公休日期"><button class="btn ink" data-act="holadd" style="min-height:44px">加入</button></div></div>
+    <h3>店家資料（會顯示在客人預約頁）</h3>
+    <div class="list">
+      <div class="li"><span class="g">名稱</span><input data-chg="text" data-k="shopName" value="${esc(st.shopName)}" style="width:60%;background:var(--soft);min-height:44px" aria-label="工作室名稱"></div>
+      <div class="li"><span class="g">電話</span><input type="tel" data-chg="text" data-k="shopPhone" value="${esc(st.shopPhone || '')}" placeholder="選填" style="width:60%;background:var(--soft);min-height:44px" aria-label="店家電話"></div>
+      <div class="li"><span class="g">LINE</span><input data-chg="text" data-k="shopLine" value="${esc(st.shopLine || '')}" placeholder="LINE ID 或連結" style="width:60%;background:var(--soft);min-height:44px" aria-label="LINE"></div>
+      <div class="li"><span class="g">地址</span><input data-chg="text" data-k="shopAddress" value="${esc(st.shopAddress || '')}" placeholder="選填" style="width:60%;background:var(--soft);min-height:44px" aria-label="地址"></div></div>
+    <h3>預約規則</h3>
+    <div class="list">
+      <div class="li"><span class="g">時段間隔</span><select data-chg="num" data-k="slotStep" style="width:auto;background:var(--soft);min-height:44px">${[15, 30, 60].map(n => `<option value="${n}" ${st.slotStep == n ? 'selected' : ''}>${n} 分鐘</option>`).join('')}</select></div>
+      <div class="li"><span class="g">客人可預約幾天內</span><select data-chg="num" data-k="bookAheadDays" style="width:auto;background:var(--soft);min-height:44px">${[7, 14, 30, 60, 90].map(n => `<option value="${n}" ${st.bookAheadDays == n ? 'selected' : ''}>${n} 天</option>`).join('')}</select></div></div>
+    <h3>客人線上預約</h3>
+    ${cloud ? `<div class="list" style="padding:14px 16px"><div style="word-break:break-all;font-size:13px;color:var(--muted);margin-bottom:10px;max-height:4.5em;overflow:hidden">${esc(bookLink())}</div>
+      <div class="acts" style="margin:0"><button class="btn ink" data-act="copylink">複製連結</button><button class="btn" data-act="sharelink" style="background:var(--soft)">分享</button><a class="btn" href="${esc(bookLink())}" target="_blank" rel="noopener" style="background:var(--soft)">預覽</a></div></div>
+      <div class="list" style="margin-top:8px"><button class="li" data-act="rules"><span class="g"><b>資料庫安全規則</b><small>專案 ${esc(FIREBASE_CONFIG.projectId)}・登入帳號 ${esc(backend.email())}</small></span></button></div>`
+      : `<div class="list" style="padding:14px 16px"><p style="margin:0 0 12px">目前是單機版，客人還不能線上預約，資料也只在這支手機。</p><button class="big" data-act="cloudsetup">開啟雲端同步＋線上預約</button></div>`}
+    <h3>資料</h3>
+    <div class="acts c2"><button class="btn" data-act="export">匯出備份</button><button class="btn" data-act="import">匯入備份</button></div>
+    ${cloud ? `<div class="acts c2"><button class="btn ghost" data-act="logout">登出</button>${CFG_SRC === 'local' ? '<button class="btn ghost" data-act="cloudoff">改回單機版</button>' : ''}</div>` : '<p class="note">單機版資料只存在這支手機，請定期匯出備份。</p>'}
+    <div style="display:flex;align-items:center;justify-content:center;gap:10px;margin:26px 0 6px;color:var(--muted);font-size:13px"><img src="icons/mark.svg" alt="" width="28" height="28">Tony the Teacher</div>`;
+}
+
+/* ---------- 面板 ---------- */
+function openLayer(rootSel, body, acts = {}, mount, opts = {}) {
+  const root = $(rootSel);
+  root.innerHTML = `<div class="bg"></div><div class="sheet" role="${opts.alert ? 'alertdialog' : 'dialog'}">${opts.alert ? '' : `<button class="ib x" aria-label="關閉">${ICON.x}</button>`}<div class="grab"><span></span></div><div class="sbody">${body}</div></div>`;
+  root.classList.add('open'); document.body.style.overflow = 'hidden';
+  if (!opts.alert) { root.querySelector('.bg').onclick = () => closeLayer(rootSel); root.querySelector('.x').onclick = () => closeLayer(rootSel); }
+  root.querySelector('.sbody').onclick = e => { const t = e.target.closest('[data-s]'); if (t && acts[t.dataset.s]) acts[t.dataset.s](t, e); };
+  mount && mount(root.querySelector('.sheet'));
+}
+function closeLayer(rootSel) {
+  const r = $(rootSel); r.classList.remove('open'); r.innerHTML = '';
+  if (!$('#sheet-root').classList.contains('open') && !$('#alert-root').classList.contains('open')) document.body.style.overflow = '';
+  if (rootSel === '#sheet-root') render();
+}
+const openSheet = (b, a, m) => openLayer('#sheet-root', b, a, m);
+const closeSheet = () => closeLayer('#sheet-root');
+
+/* ---------- 順延 ---------- */
+function planShift(b, d) {
+  const started = b.date === today() && toMin(b.start) <= nowMin();
+  const moves = []; let cursor;
+  if (started) cursor = endOf(b) + d;
+  else { moves.push({ b, from: b.start, to: toHM(toMin(b.start) + d) }); cursor = endOf(b) + d; }
+  S.bookings.filter(x => x.date === b.date && x.status === 'booked' && x.id !== b.id && toMin(x.start) >= toMin(b.start)).sort(byStart).forEach(x => {
+    const s = toMin(x.start);
+    if (s < cursor) { moves.push({ b: x, from: x.start, to: toHM(cursor) }); cursor += x.duration; } else cursor = Math.max(cursor, s + x.duration);
+  });
+  return { started, moves, lastEnd: cursor };
+}
+function applyShift(b, d, plan) {
+  if (plan.started) backend.put('bookings', { ...b, duration: b.duration + d, extra: (b.extra || 0) + d });
+  plan.moves.forEach(m => { const x = S.bookings.find(y => y.id === m.b.id) || m.b; backend.put('bookings', { ...x, start: m.to, origStart: x.origStart || m.from }); });
+}
+function shiftUI(b, opts = {}) {
+  let d = 0;
+  const late = nowMin() - endOf(b);
+  const body = `${opts.alert ? `<div class="head-card" style="--c:${colorOf(b)}"><span class="badge">${ICON.clock}時間到了</span><span class="svc">${esc(svcNames(b))}</span>
+      <span style="font-weight:700">預計 ${toHM(endOf(b))} 結束${late > 0 ? `・已超過 ${late} 分` : ''}${who(b) ? '・' + esc(who(b)) : ''}</span></div>`
+      : `<h1>順延多久？</h1>`}
+    <div class="lbl"><h2>${opts.alert ? '還要多久？' : (planShift(b, 0).started ? '這位還要多做' : '這位與後面延後')}</h2><span>後面的預約會自動往後排</span></div>
+    <div class="slots" id="sh-opts">${[10, 15, 20, 30].map(m => `<button class="slot num" data-s="pick" data-m="${m}">+${m}</button>`).join('')}</div>
+    <div class="f2" style="margin-top:8px"><input id="sh-custom" type="number" inputmode="numeric" min="1" max="240" placeholder="其他分鐘數" aria-label="其他分鐘數"><button class="btn" data-s="custom">確定</button></div>
+    <div id="sh-prev"></div>
+    ${opts.alert ? `<div class="two" style="margin-top:6px"><button class="btn ghost" data-s="snooze">忽略<small>5 分鐘後再提醒</small></button><button class="btn ink" data-s="done">${ICON.check}已經做完了</button></div>` : ''}`;
+  const acts = {
+    pick(t) { d = +t.dataset.m; $('#sh-custom').value = ''; preview(); },
+    custom() { const v = +$('#sh-custom').value; if (!(v > 0 && v <= 240)) return toast('請輸入 1–240 分鐘'); d = v; preview(); },
+    apply(t) {
+      const plan = planShift(b, d); applyShift(b, d, plan);
+      const notify = t.dataset.n === '1' && plan.moves.some(m => m.b.phone);
+      finish(); toast(`已順延 ${d} 分鐘`);
+      if (notify) openNotify(plan.moves.filter(m => m.b.phone));
+    },
+    snooze() { snooze[b.id] = Date.now() + 5 * 60000; finish(); toast('5 分鐘後會再提醒'); },
+    done() { backend.put('bookings', { ...b, status: 'done', doneAt: Date.now() }); finish(); toast('已完成'); }
+  };
+  const finish = () => opts.alert ? closeAlert() : closeSheet();
+  function preview() {
+    document.querySelectorAll('#sh-opts .slot').forEach(s => s.classList.toggle('on', +s.dataset.m === d));
+    const plan = planShift(b, d), hrs = dayHours(b.date), withPhone = plan.moves.filter(m => m.b.phone).length;
+    $('#sh-prev').innerHTML = `<div class="lbl"><h2>會變成這樣</h2><span>+${d} 分</span></div>
+      ${plan.moves.length ? `<div class="mv">${plan.moves.map(m => `<div class="row" style="--c:${colorOf(m.b)}"><span class="t num">${m.to}</span><span class="m"><b>${esc(svcNames(m.b))}</b><small>原本 ${m.from}${who(m.b) ? '・' + esc(who(m.b)) : ''}${m.b.phone ? '・有電話' : '・沒有電話'}</small></span></div>`).join('')}</div>`
+        : `<p class="note">${plan.started ? `這位延長到 ${toHM(endOf(b) + d)}，` : ''}後面沒有預約受影響。</p>`}
+      ${hrs && plan.lastEnd > hrs[1] ? `<p class="note" style="color:var(--red)">最後會做到 ${toHM(plan.lastEnd)}，超過營業時間。</p>` : ''}
+      ${withPhone ? `<button class="big" data-s="apply" data-n="1">順延並通知 ${withPhone} 組客人</button><button class="btn ghost" data-s="apply" data-n="0" style="width:100%">只順延，不通知</button>`
+        : `<button class="big" data-s="apply" data-n="0">確定順延 ${d} 分鐘</button>`}`;
+  }
+  if (opts.alert) openLayer('#alert-root', body, acts, null, { alert: true }); else openSheet(body, acts);
+}
+function openNotify(moves) {
+  const shop = S.settings.shopName;
+  openSheet(`<h1>通知客人</h1><p class="note">逐一點「傳簡訊」，訊息已經寫好。</p>
+    <div class="mv">${moves.map(m => { const tel = m.b.phone.replace(/[^\d+]/g, ''); const msg = `您好，設計師目前進度稍有延誤，您${dayWord(m.b.date)} ${m.from} 的預約將延後至 ${m.to}，造成不便敬請見諒。— ${shop}`;
+      return `<div class="row" style="--c:${colorOf(m.b)}"><span class="t num">${m.to}</span><span class="m"><b>${esc(svcNames(m.b))}</b><small>${esc(who(m.b))}</small></span><a class="btn ink" style="min-height:44px" href="sms:${tel}?&body=${encodeURIComponent(msg)}">傳簡訊</a></div>`; }).join('')}</div>
+    <button class="btn" data-s="close" style="width:100%">完成</button>`, { close: closeSheet });
+}
+
+/* ---------- 超時提醒 ---------- */
+const snooze = {};
+let alertFor = null, ringT = null;
+function checkAlert() {
+  if (!S.settings || S.settings.alerts === false || alertFor) return;
+  const c = current(); if (!c || nowMin() < endOf(c)) return;
+  if (snooze[c.id] && Date.now() < snooze[c.id]) return;
+  alertFor = c.id; shiftUI(c, { alert: true });
+  let n = 0; chime(); clearInterval(ringT);
+  ringT = setInterval(() => { n++; if (n < 10 || n % 8 === 0) chime(); }, 4000);
+  sysNotify('時間到了：' + svcNames(c), `預計 ${toHM(endOf(c))} 結束，要順延後面的預約嗎？`);
+}
+function closeAlert() { alertFor = null; clearInterval(ringT); closeLayer('#alert-root'); render(); }
+let lastMin = -1;
+function tick() {
+  if (!S.settings) return;
+  const n = nowMin();
+  if (alertFor) { const b = S.bookings.find(x => x.id === alertFor); if (!b || b.status !== 'booked' || n < endOf(b)) closeAlert(); }
+  if (n !== lastMin) {
+    lastMin = n;
+    if (U.tab === 'day' && !sheetOpen() && !alertFor && !document.activeElement?.matches('input,select,textarea')) render();
+  }
+  checkAlert();
+}
+setInterval(tick, 10000);
+
+/* ---------- 新增／編輯預約 ---------- */
+function openForm(init = {}) {
+  const ex = init.id ? S.bookings.find(b => b.id === init.id) : null;
+  const snap = Object.fromEntries((ex?.services || []).map(s => [s.id, s]));
+  const lookup = id => S.services.find(s => s.id === id) || snap[id];
+  const f = { id: ex?.id, date: ex?.date || init.date || U.date, start: ex ? toMin(ex.start) : (init.start ?? null),
+    svc: ex ? ex.services.map(s => s.id) : (init.serviceIds || []).filter(lookup), customerId: ex?.customerId || init.customerId || null,
+    dur: ex?.duration ?? 0, price: ex?.price ?? 0, durT: !!ex, priceT: !!ex };
+  if (f.date < today() && !ex) f.date = today();
+  const tiles = [...activeServices(), ...f.svc.map(lookup).filter(s => s && !activeServices().some(a => a.id === s.id))];
+  const body = `<h1>${ex ? '編輯預約' : '做什麼？'}</h1>
+    <div class="tiles" id="f-svc">${tiles.map(s => `<button class="tile" data-s="svc" data-id="${s.id}" style="--c:${s.color || PALETTE[7]}"><b>${esc(s.name)}</b><small>${durText(s.duration)}</small></button>`).join('')}</div>
+    <div class="lbl"><h2>什麼時候？</h2><span id="f-sum"></span></div>
+    <div class="chips" id="f-days"></div>
+    <div class="slots" id="f-slots" style="margin-top:10px"></div>
+    <p class="note" id="f-hint"></p>
+    <div class="f2" style="margin-top:10px"><input id="f-phone" type="tel" inputmode="tel" placeholder="電話（選填）" autocomplete="off" aria-label="電話"><input id="f-name" placeholder="稱呼（選填）" autocomplete="off" aria-label="稱呼"></div>
+    <div class="sugg" id="f-sugg"></div>
+    <details class="more" ${ex ? 'open' : ''}><summary>＋ 備註、金額、時長</summary>
+      <div class="field"><span>備註</span><input id="f-note" placeholder="例如：長髮、指定藥水"></div>
+      <div class="f2"><label class="field"><span>金額</span><input id="f-price" type="number" inputmode="numeric" min="0" step="10"></label><label class="field"><span>時長（分）</span><input id="f-dur" type="number" inputmode="numeric" min="5" step="5"></label></div>
+    </details>
+    <button class="big" data-s="save" id="f-save">建立預約</button>`;
+  const acts = {
+    svc(t) { const id = t.dataset.id; f.svc = f.svc.includes(id) ? f.svc.filter(x => x !== id) : [...f.svc, id]; recalc(); },
+    day(t) { f.date = t.dataset.d; f.start = null; slots(); },
+    slot(t) { f.start = +t.dataset.m; slots(); },
+    pick(t) { const c = S.customers.find(x => x.id === t.dataset.id); f.customerId = c.id; $('#f-name').value = c.name || ''; $('#f-phone').value = c.phone || ''; $('#f-sugg').innerHTML = ''; },
+    save
+  };
+  openSheet(body, acts, sh => {
+    $('#f-name', sh).value = ex?.customerName || init.name || '';
+    $('#f-phone', sh).value = ex?.phone || init.phone || '';
+    $('#f-note', sh).value = ex?.note || '';
+    $('#f-dur', sh).oninput = e => { f.durT = true; f.dur = +e.target.value || 0; slots(); };
+    $('#f-price', sh).oninput = e => { f.priceT = true; f.price = +e.target.value || 0; };
+    const sugg = e => {
+      f.customerId = null; const q = e.target.value.trim().toLowerCase();
+      const m = q.length >= 2 ? S.customers.filter(c => (c.name || '').toLowerCase().includes(q) || (c.phone || '').includes(q)).slice(0, 3) : [];
+      $('#f-sugg').innerHTML = m.map(c => `<button data-s="pick" data-id="${c.id}">${esc(c.name || '')} <span style="color:var(--muted)">${esc(c.phone || '')}</span></button>`).join('');
+    };
+    $('#f-name', sh).oninput = sugg; $('#f-phone', sh).oninput = sugg;
+    recalc();
+  });
+  function recalc() {
+    const chosen = f.svc.map(lookup).filter(Boolean);
+    if (!f.durT) f.dur = chosen.reduce((a, s) => a + s.duration, 0);
+    if (!f.priceT) f.price = chosen.reduce((a, s) => a + s.price, 0);
+    $('#f-dur').value = f.dur || ''; $('#f-price').value = f.price || '';
+    document.querySelectorAll('#f-svc .tile').forEach(c => c.classList.toggle('on', f.svc.includes(c.dataset.id)));
+    slots();
+  }
+  function slots() {
+    const t = today(), quick = [t, addDays(t, 1), addDays(t, 2)];
+    const other = !quick.includes(f.date);
+    $('#f-days').innerHTML = quick.map((d, i) => `<button class="chip ${d === f.date ? 'on' : ''}" data-s="day" data-d="${d}">${['今天', '明天', '後天'][i]}${dayHours(d) ? '' : '（休）'}</button>`).join('')
+      + `<label class="chip ${other ? 'on' : ''}">${other ? dateLabel(f.date) : '其他日期'}<input type="date" id="f-date" value="${f.date}" aria-label="其他日期"></label>`;
+    $('#f-date').onchange = e => { if (e.target.value) { f.date = e.target.value; f.start = null; slots(); } };
+    const list = freeStarts(f.date, f.dur, f.id);
+    const custom = f.start != null && !list.includes(f.start);
+    $('#f-slots').innerHTML = !f.dur ? '<p class="note" style="grid-column:1/-1;margin:0">先選服務，就會列出空檔</p>'
+      : list.map(m => `<button class="slot num ${m === f.start ? 'on' : ''}" data-s="slot" data-m="${m}">${toHM(m)}</button>`).join('')
+        + `<label class="slot ${custom ? 'on num' : ''}">${custom ? toHM(f.start) : '自訂'}<input type="time" id="f-time" step="300" value="${f.start != null ? toHM(f.start) : ''}" aria-label="自訂時間"></label>`;
+    const ti = $('#f-time'); if (ti) ti.onchange = e => { if (e.target.value) { f.start = toMin(e.target.value); slots(); } };
+    $('#f-hint').textContent = !dayHours(f.date) ? '這天公休，可用「自訂」時間。' : f.dur && !list.length ? '這天已經沒有空檔，可用「自訂」時間。' : '';
+    $('#f-sum').textContent = f.dur ? `${durText(f.dur)}・${money(f.price)}` : '';
+    $('#f-save').textContent = f.start != null ? `${ex ? '儲存' : '建立'}・${dayWord(f.date)} ${toHM(f.start)}` : (ex ? '儲存變更' : '建立預約');
+  }
+  function save() {
+    const name = $('#f-name').value.trim(), phone = $('#f-phone').value.trim(), note = $('#f-note').value.trim();
+    if (!f.dur || f.dur <= 0) return toast('請選擇服務');
+    if (f.start == null) return toast('請選擇時間');
+    const h = dayHours(f.date);
+    if (overlaps(f.start, f.start + f.dur, busyRanges(f.date, f.id)) && !confirm('這個時段和其他預約重疊，仍要儲存嗎？')) return;
+    if ((!h || f.start < h[0] || f.start + f.dur > h[1]) && !confirm('不在營業時間內，仍要儲存嗎？')) return;
+    const c = ensureCustomer(name, phone, f.customerId);
+    const b = { ...(ex || {}), id: f.id || uid(), date: f.date, start: toHM(f.start), duration: +f.dur, price: +f.price || 0,
+      services: f.svc.map(lookup).filter(Boolean).map(s => ({ id: s.id, name: s.name, duration: s.duration, price: s.price, color: s.color || '' })),
+      customerId: c?.id || null, customerName: name || c?.name || '', phone: phone || c?.phone || '', note,
+      status: ex?.status || 'booked', source: ex?.source || 'stylist', createdAt: ex?.createdAt || Date.now() };
+    backend.put('bookings', b); closeSheet(); U.date = f.date; U.tab = 'day'; render(); toast(ex ? '已更新' : '預約已建立');
+  }
+}
+
+function contactBtns(phone, msg) {
+  if (!phone) return '';
+  const tel = phone.replace(/[^\d+]/g, '');
+  return `<div class="acts c2"><a class="btn" href="tel:${tel}">撥打電話</a><a class="btn" href="sms:${tel}?&body=${encodeURIComponent(msg)}">傳簡訊</a></div>`;
+}
+function openBooking(id) {
+  const b = S.bookings.find(x => x.id === id); if (!b) return;
+  const set = st => () => { backend.put('bookings', { ...b, status: st, ...(st === 'done' ? { doneAt: Date.now() } : {}) }); closeSheet(); toast(STATUS[st]); };
+  const msg = `您好，提醒您${dayWord(b.date)} ${b.start} 的預約（${svcNames(b)}），${S.settings.shopName} 期待您的光臨！`;
+  openSheet(`<div class="head-card" style="--c:${colorOf(b)};margin-top:8px"><span class="num" style="font-size:22px;font-weight:800">${dayWord(b.date)} ${b.start} – ${toHM(endOf(b))}</span>
+      <span class="svc">${esc(svcNames(b))}</span>${[who(b), b.phone && b.customerName ? b.phone : ''].filter(Boolean).length ? `<div class="tags">${[who(b), b.customerName ? b.phone : ''].filter(Boolean).map(t => `<span class="tag">${esc(t)}</span>`).join('')}</div>` : ''}</div>
+    <dl class="kv"><div><dt>金額</dt><dd>${money(b.price)}</dd></div><div><dt>時長</dt><dd>${durText(b.duration)}${b.extra ? `（含順延 ${b.extra} 分）` : ''}</dd></div>
+      <div><dt>狀態</dt><dd>${STATUS[b.status]}${b.source === 'online' ? '・線上預約' : ''}</dd></div>
+      ${b.origStart ? `<div><dt>原本時間</dt><dd>${b.origStart}</dd></div>` : ''}${b.note ? `<div><dt>備註</dt><dd>${esc(b.note)}</dd></div>` : ''}</dl>
+    ${b.status === 'booked' ? `<div class="acts"><button class="btn ink" data-s="done">做完了</button><button class="btn" data-s="noshow">沒來</button><button class="btn red" data-s="cancel">取消</button></div>
+      <div class="acts c2"><button class="btn" data-s="shift">順延</button><button class="btn" data-s="edit">編輯</button></div>`
+      : `<div class="acts c2"><button class="btn" data-s="reopen">改回已預約</button><button class="btn" data-s="edit">編輯</button></div>`}
+    ${contactBtns(b.phone, msg)}
+    <div class="acts c2"><button class="btn ghost" data-s="again">再約一次</button><button class="btn ghost red" data-s="del">刪除</button></div>`, {
+    done: set('done'), noshow: set('noshow'), reopen: set('booked'),
+    cancel: () => { if (confirm('確定取消這筆預約？')) set('cancelled')(); },
+    shift: () => shiftUI(b), edit: () => openForm({ id }),
+    again: () => openForm({ customerId: b.customerId, name: b.customerName, phone: b.phone, serviceIds: (b.services || []).map(s => s.id), date: today() }),
+    del: () => { if (confirm('刪除後無法復原，確定刪除？')) { backend.remove('bookings', id); closeSheet(); toast('已刪除'); } }
+  });
+}
+function openRequests() {
+  openSheet(`<h1>線上預約待確認</h1>${S.requests.length ? `<div class="rows">${[...S.requests].sort(byStart).map(q => reqRow(q, true)).join('')}</div>` : '<div class="empty">目前沒有</div>'}`, {}, sh => {
+    sh.querySelectorAll('[data-act="req"]').forEach(el => el.onclick = () => openRequest(el.dataset.id));
+  });
+}
+function openRequest(id) {
+  const q = S.requests.find(x => x.id === id); if (!q) return;
+  const clash = overlaps(toMin(q.start), toMin(q.start) + q.duration, busyRanges(q.date, q.id));
+  const msgOk = `您好，您${dayWord(q.date)} ${q.start} 的預約已確認，${S.settings.shopName} 期待您的光臨！`;
+  openSheet(`<div class="head-card" style="--c:${q.services?.[0]?.color || PALETTE[7]};margin-top:8px"><span class="badge">待確認</span><span class="num" style="font-size:22px;font-weight:800">${dayWord(q.date)} ${q.start} – ${toHM(toMin(q.start) + q.duration)}</span>
+      <span class="svc">${esc((q.services || []).map(s => s.name).join('＋'))}</span><div class="tags">${[q.name, q.phone].filter(Boolean).map(t => `<span class="tag">${esc(t)}</span>`).join('')}</div></div>
+    <dl class="kv"><div><dt>金額</dt><dd>${money(q.price)}</dd></div>${q.note ? `<div><dt>備註</dt><dd>${esc(q.note)}</dd></div>` : ''}</dl>
+    ${clash ? '<p class="note" style="color:var(--red)">這個時段與其他預約重疊</p>' : ''}
+    <div class="acts c2"><button class="btn ink" data-s="ok">接受</button><button class="btn red" data-s="no">婉拒</button></div>
+    ${contactBtns(q.phone, msgOk)}`, {
+    ok: () => {
+      if (clash && !confirm('與其他預約重疊，仍要接受？')) return;
+      const c = ensureCustomer(q.name || '', q.phone, null);
+      backend.put('bookings', { id: uid(), date: q.date, start: q.start, duration: q.duration, price: q.price, services: q.services || [], customerId: c?.id || null, customerName: q.name || '', phone: q.phone || '', note: q.note || '', status: 'booked', source: 'online', createdAt: Date.now() });
+      backend.remove('requests', q.id);
+      openSheet(`<h1>已接受</h1><p class="note">要通知客人嗎？</p>${contactBtns(q.phone, msgOk)}<button class="btn" data-s="close" style="width:100%">完成</button>`, { close: closeSheet });
+    },
+    no: () => { if (confirm('婉拒並刪除這筆線上預約？')) { backend.remove('requests', q.id); closeSheet(); toast('已婉拒，記得通知客人'); } }
+  });
+}
+function openCustomer(id) {
+  const c = S.customers.find(x => x.id === id); if (!c) return;
+  const st = custStats(c), hist = [...st.bs].sort(byStart).reverse();
+  openSheet(`<h1>${esc(c.name || c.phone || '客人')}</h1>
+    <dl class="kv"><div><dt>電話</dt><dd>${esc(c.phone || '—')}</dd></div><div><dt>完成</dt><dd>${st.visits} 次・${money(st.spend)}</dd></div>${c.note ? `<div><dt>備註</dt><dd>${esc(c.note)}</dd></div>` : ''}</dl>
+    <div class="acts c2"><button class="btn ink" data-s="book">幫他預約</button><button class="btn" data-s="edit">編輯</button></div>
+    ${contactBtns(c.phone, '您好，')}
+    <h3>紀錄</h3><div class="rows">${hist.length ? hist.map(b => rowHtml(b, b.status !== 'booked')).join('') : '<div class="empty">尚無紀錄</div>'}</div>`, {
+    book: () => openForm({ customerId: c.id, name: c.name, phone: c.phone, date: today() }), edit: () => editCustomer(c)
+  }, sh => sh.querySelectorAll('[data-act="bk"]').forEach(el => el.onclick = () => openBooking(el.dataset.id)));
+}
+function editCustomer(c) {
+  openSheet(`<h1>${c ? '編輯客人' : '新增客人'}</h1>
+    <label class="field"><span>電話</span><input id="c-phone" type="tel" inputmode="tel"></label>
+    <label class="field"><span>稱呼</span><input id="c-name"></label>
+    <label class="field"><span>備註</span><textarea id="c-note" rows="3" placeholder="髮質、過敏、喜好"></textarea></label>
+    <button class="big" data-s="save">儲存</button>${c ? '<button class="btn ghost red" data-s="del" style="width:100%;margin-top:8px">刪除客人（保留紀錄）</button>' : ''}`, {
+    save: () => {
+      const name = $('#c-name').value.trim(), phone = $('#c-phone').value.trim(); if (!name && !phone) return toast('請輸入電話或稱呼');
+      const obj = { ...(c || { id: uid(), createdAt: Date.now() }), name, phone, note: $('#c-note').value.trim() };
+      backend.put('customers', obj); openCustomer(obj.id); toast('已儲存');
+    },
+    del: () => { if (confirm('刪除這位客人？')) { backend.remove('customers', c.id); closeSheet(); } }
+  }, sh => { $('#c-name', sh).value = c?.name || ''; $('#c-phone', sh).value = c?.phone || ''; $('#c-note', sh).value = c?.note || ''; });
+}
+function editService(s) {
+  let color = s?.color || PALETTE[S.services.length % PALETTE.length];
+  openSheet(`<h1>${s ? '編輯服務' : '新增服務'}</h1>
+    <label class="field"><span>名稱</span><input id="v-name" placeholder="例如：頭皮護理"></label>
+    <div class="f2"><label class="field"><span>時長（分）</span><input id="v-dur" type="number" inputmode="numeric" min="5" step="5"></label><label class="field"><span>價格</span><input id="v-price" type="number" inputmode="numeric" min="0" step="10"></label></div>
+    <div class="field"><span>顏色</span><div class="colors">${PALETTE.map(c => `<button data-s="color" data-c="${c}" style="--c:${c}" class="${c === color ? 'on' : ''}" aria-label="顏色"></button>`).join('')}</div></div>
+    <label class="li" style="background:var(--card);border-radius:18px;margin:6px 0 14px"><span class="g"><b>開放預約</b></span><input type="checkbox" class="tog" id="v-active"></label>
+    <button class="big" data-s="save">儲存</button>${s ? '<button class="btn ghost red" data-s="del" style="width:100%;margin-top:8px">刪除</button>' : ''}`, {
+    color: t => { color = t.dataset.c; document.querySelectorAll('.colors button').forEach(b => b.classList.toggle('on', b === t)); },
+    save: () => {
+      const name = $('#v-name').value.trim(), duration = +$('#v-dur').value;
+      if (!name) return toast('請輸入名稱'); if (!(duration > 0)) return toast('請輸入時長');
+      backend.put('services', { ...(s || { id: uid(), order: Math.max(-1, ...S.services.map(x => x.order ?? 0)) + 1 }), name, duration, price: +$('#v-price').value || 0, color, active: $('#v-active').checked });
+      closeSheet(); toast('已儲存');
+    },
+    del: () => { if (confirm(`刪除「${s.name}」？過去紀錄不受影響。`)) { backend.remove('services', s.id); closeSheet(); } }
+  }, sh => { $('#v-name', sh).value = s?.name || ''; $('#v-dur', sh).value = s?.duration || 60; $('#v-price', sh).value = s?.price ?? ''; $('#v-active', sh).checked = s ? s.active !== false : true; });
+}
+
+/* ---------- 事件 ---------- */
+const ACT = {
+  day: t => { U.date = addDays(U.date, +t.dataset.n); render(); },
+  today: () => { U.date = today(); render(); },
+  ended: () => { U.showEnded = !U.showEnded; render(); },
+  unlock: () => { unlockAudio(); chime(); toast('提醒聲音已開啟'); },
+  new: t => openForm({ date: U.date, start: t.dataset.start ? +t.dataset.start : null }),
+  bk: t => openBooking(t.dataset.id),
+  done: t => { const b = S.bookings.find(x => x.id === t.dataset.id); if (b) { backend.put('bookings', { ...b, status: 'done', doneAt: Date.now() }); toast('已完成 ' + money(b.price)); } },
+  shift: t => { const b = S.bookings.find(x => x.id === t.dataset.id); if (b) shiftUI(b); },
+  req: t => openRequest(t.dataset.id),
+  reqs: openRequests,
+  seg: t => { U.more = t.dataset.v; render(); },
+  cust: t => openCustomer(t.dataset.id),
+  newcust: () => editCustomer(null),
+  mon: t => { const [y, m] = U.month.split('-').map(Number); const d = new Date(y, m - 1 + +t.dataset.n, 1); U.month = d.getFullYear() + '-' + pad(d.getMonth() + 1); render(); },
+  svc: t => editService(S.services.find(s => s.id === t.dataset.id)),
+  svcmv: t => { const list = services(), i = list.findIndex(s => s.id === t.dataset.id), j = i + +t.dataset.n; if (j < 0 || j >= list.length) return;
+    [list[i], list[j]] = [list[j], list[i]]; list.forEach((s, k) => { if (s.order !== k) backend.put('services', { ...s, order: k }); }); },
+  holadd: () => { const v = $('#hol-in').value; if (!v) return toast('請先選日期'); const h = new Set(S.settings.holidays || []); h.add(v); backend.saveSettings({ ...S.settings, holidays: [...h].filter(x => x >= today()).sort() }); toast('已加入公休'); },
+  holdel: t => backend.saveSettings({ ...S.settings, holidays: (S.settings.holidays || []).filter(x => x !== t.dataset.d) }),
+  testsound: () => { unlockAudio(); chime(); },
+  notifyperm: async () => { try { await Notification.requestPermission(); } catch {} render(); },
+  copylink: () => { const l = bookLink(); navigator.clipboard?.writeText(l).then(() => toast('已複製連結'), () => prompt('複製這個連結', l)); },
+  sharelink: async () => { const l = bookLink(); try { if (navigator.share) await navigator.share({ title: S.settings.shopName + '｜線上預約', text: '線上預約這裡點 ↓', url: l }); else { await navigator.clipboard.writeText(l); toast('已複製連結'); } } catch {} },
+  rules: () => showRulesHelp(false),
+  cloudsetup: () => cloudSetup(),
+  cloudoff: () => { if (confirm('改回單機版？雲端資料不會被刪除，之後可以再切回來。')) { localStorage.removeItem(LS_FB); location.reload(); } },
+  export: () => {
+    const data = JSON.stringify({ app: 'salon', version: 2, exportedAt: new Date().toISOString(), settings: S.settings, services: S.services, customers: S.customers, bookings: S.bookings }, null, 1);
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([data], { type: 'application/json' })); a.download = `預約備份-${today()}.json`; document.body.appendChild(a); a.click(); a.remove();
+  },
+  import: () => $('#import-file').click(),
+  logout: () => { if (confirm('確定登出？')) backend.logout(); }
+};
+const CHG = {
+  jump: t => { if (t.value) { U.date = t.value; render(); } },
+  text: t => backend.saveSettings({ ...S.settings, [t.dataset.k]: t.value.trim() || (t.dataset.k === 'shopName' ? '我的髮型工作室' : '') }),
+  num: t => backend.saveSettings({ ...S.settings, [t.dataset.k]: +t.value }),
+  flag: t => { backend.saveSettings({ ...S.settings, [t.dataset.k]: t.checked }); if (t.dataset.k === 'keepAwake') { if (t.checked) keepAwake(); else { wake?.release?.(); wake = null; } } },
+  hours: t => { const hours = clean(S.settings.hours), d = t.dataset.d; hours[d] ||= { open: false, start: '10:00', end: '20:00' };
+    hours[d][t.dataset.k] = t.dataset.k === 'open' ? t.checked : t.value;
+    if (toMin(hours[d].end) <= toMin(hours[d].start)) { toast('結束需晚於開始'); render(); return; }
+    backend.saveSettings({ ...S.settings, hours }); }
+};
+$('#app').addEventListener('click', e => { const t = e.target.closest('[data-act]'); if (t && ACT[t.dataset.act]) ACT[t.dataset.act](t, e); });
+$('#app').addEventListener('change', e => { const t = e.target.closest('[data-chg]'); if (t && CHG[t.dataset.chg]) CHG[t.dataset.chg](t, e); });
+$('#app').addEventListener('input', e => { if (e.target.dataset.inp === 'q') { U.q = e.target.value; renderCustList(); } });
+$('#tabs').addEventListener('click', e => { const t = e.target.closest('[data-tab]'); if (t) { U.tab = t.dataset.tab; if (U.tab === 'day') U.date = today(); window.scrollTo(0, 0); render(); } });
+$('#plus').onclick = () => openForm({ date: U.tab === 'day' ? U.date : today() });
+$('#import-file').onchange = async e => {
+  const file = e.target.files[0]; e.target.value = ''; if (!file) return;
+  try {
+    const d = JSON.parse(await file.text());
+    if (d.app !== 'salon' || !d.settings) throw new Error('格式不符');
+    if (!confirm(`匯入 ${d.bookings?.length || 0} 筆預約、${d.customers?.length || 0} 位客人？${backend.mode === 'local' ? '目前資料會被取代。' : ''}`)) return;
+    await backend.replaceAll(d); toast('匯入完成');
+  } catch (err) { toast('匯入失敗：' + err.message); }
+};
+document.addEventListener('visibilitychange', () => { if (!document.hidden) { keepAwake(); tick(); } });
+
+/* ---------- 啟動 ---------- */
+(async () => {
+  try { backend = FIREBASE_CONFIG ? await cloudBackend() : localBackend(); await backend.start(); tick(); }
+  catch (e) {
+    $('#app').innerHTML = `<div class="empty">載入失敗：${esc(e.message)}<br><br>${CFG_SRC === 'local' ? '<button class="btn" id="fb-off" style="margin:auto">改回單機版</button>' : '請確認網路後重新整理'}</div>`;
+    const o = $('#fb-off'); if (o) o.onclick = () => { localStorage.removeItem(LS_FB); location.reload(); };
+  }
+  if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) navigator.serviceWorker.register('sw.js').catch(() => {});
+})();
+</script>
+</body>
+</html>
