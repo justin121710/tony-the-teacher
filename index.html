@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Tony老師">
 <meta name="description" content="Tony the Teacher — 獨立設計師的預約小幫手">
 <title>Tony老師</title>
-<link rel="icon" type="image/svg+xml" href="icons/icon.svg">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="manifest" href="manifest.webmanifest">
@@ -114,6 +114,10 @@ details.more{margin:4px 0 12px}details.more summary{list-style:none;color:var(--
 .li{display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--soft);width:100%;min-height:56px}.li:last-child{border:0}
 .li .g{flex:1;min-width:0}.li small{display:block;color:var(--muted);font-size:13px}
 .dot{width:16px;height:16px;border-radius:50%;background:var(--c);flex:none}
+.handle{width:48px;height:48px;margin-right:-8px;display:grid;place-items:center;color:#9A928A;touch-action:none;cursor:grab;flex:none;-webkit-user-select:none;user-select:none}
+.svc-row{background:var(--card);position:relative}
+.svc-row.dragging{z-index:5;box-shadow:0 10px 26px rgba(27,27,31,.18);border-radius:16px;transition:none!important}
+.svc-row.dragging .handle{color:var(--ink);cursor:grabbing}
 .tog{appearance:none;-webkit-appearance:none;width:52px;height:32px;border-radius:999px;background:var(--line);position:relative;flex:none;min-height:0;padding:0;border:0;transition:.2s;cursor:pointer}
 .tog:checked{background:var(--ink)}.tog::after{content:"";position:absolute;top:4px;left:4px;width:24px;height:24px;border-radius:50%;background:#fff;transition:.2s}.tog:checked::after{left:24px}
 .hrs .li{flex-wrap:wrap;gap:8px}.hrs .wd{width:40px;font-weight:900;flex:none}
@@ -413,28 +417,67 @@ async function cloudBackend() {
 }
 
 /* ---------- 聲音、震動、螢幕常亮 ---------- */
-let actx = null, audioOK = false, wake = null;
+let actx = null, audioOK = false, wake = null, bell = null, bellUnlocking = false, wantRing = false;
+// 預先產生一段提示音（WAV），用一般的 <audio> 播放：iPhone 開靜音鍵時 Web Audio 會被靜音，<audio> 搭配 playback 模式比較可靠
+function chimeWavUrl() {
+  const sr = 22050, len = Math.floor(sr * 1.9), data = new Int16Array(len);
+  [[0, 880], [0.22, 1175], [0.44, 1568], [0.9, 880], [1.12, 1175], [1.34, 1568]].forEach(([t0, f]) => {
+    const st = Math.floor(t0 * sr), n = Math.floor(0.42 * sr);
+    for (let i = 0; i < n && st + i < len; i++) {
+      const t = i / sr, env = Math.min(1, t / 0.01) * Math.exp(-t * 9);
+      data[st + i] = Math.max(-32767, Math.min(32767, data[st + i] + Math.sin(2 * Math.PI * f * t) * env * 0.55 * 32767));
+    }
+  });
+  const buf = new ArrayBuffer(44 + len * 2), v = new DataView(buf);
+  const w = (o, str) => [...str].forEach((c, i) => v.setUint8(o + i, c.charCodeAt(0)));
+  w(0, 'RIFF'); v.setUint32(4, 36 + len * 2, true); w(8, 'WAVE'); w(12, 'fmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, sr, true); v.setUint32(28, sr * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true); w(36, 'data'); v.setUint32(40, len * 2, true);
+  new Int16Array(buf, 44).set(data);
+  return URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }));
+}
+function markAudioOK() { if (!audioOK) { audioOK = true; if (U.tab === 'day' && !sheetOpen()) render(); } }
 function unlockAudio() {
+  try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch {}
+  try {
+    if (!bell) { bell = new Audio(chimeWavUrl()); bell.preload = 'auto'; bell.setAttribute('playsinline', ''); }
+    if (!audioOK && !bellUnlocking) {
+      bellUnlocking = true; bell.muted = true;
+      const p = bell.play();
+      const done = ok => { bellUnlocking = false; if (!wantRing) { bell.pause(); bell.currentTime = 0; } bell.muted = false; if (ok) markAudioOK(); };
+      if (p && p.then) p.then(() => done(true), () => done(false)); else done(true);
+    }
+  } catch {}
   try {
     actx = actx || new (window.AudioContext || window.webkitAudioContext)();
     if (actx.state === 'suspended') actx.resume();
     const o = actx.createOscillator(), g = actx.createGain(); g.gain.value = 0; o.connect(g).connect(actx.destination); o.start(); o.stop(actx.currentTime + 0.02);
-    if (!audioOK) { audioOK = true; if (U.tab === 'day' && !sheetOpen()) render(); }
+    if (actx.state === 'running') markAudioOK();
   } catch {}
 }
 document.addEventListener('pointerdown', unlockAudio, true);
-function chime() {
-  try { navigator.vibrate?.([300, 120, 300, 120, 300]); } catch {}
+document.addEventListener('touchend', unlockAudio, true);
+function beepWebAudio() {
   if (!actx) return;
   try {
     if (actx.state === 'suspended') actx.resume();
-    const t0 = actx.currentTime;
+    const t0 = actx.currentTime + 0.05;
     [[0, 880], [0.22, 1175], [0.44, 1568], [0.9, 880], [1.12, 1175], [1.34, 1568]].forEach(([dt, f]) => {
       const o = actx.createOscillator(), g = actx.createGain(); o.type = 'sine'; o.frequency.value = f;
-      g.gain.setValueAtTime(0.0001, t0 + dt); g.gain.exponentialRampToValueAtTime(0.5, t0 + dt + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dt + 0.32);
-      o.connect(g).connect(actx.destination); o.start(t0 + dt); o.stop(t0 + dt + 0.35);
+      g.gain.setValueAtTime(0.0001, t0 + dt); g.gain.exponentialRampToValueAtTime(0.6, t0 + dt + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dt + 0.35);
+      o.connect(g).connect(actx.destination); o.start(t0 + dt); o.stop(t0 + dt + 0.4);
     });
   } catch {}
+}
+function chime() {
+  try { navigator.vibrate?.([300, 120, 300, 120, 300]); } catch {}
+  if (!bell) { beepWebAudio(); return; }
+  try {
+    wantRing = true; bell.muted = false; bell.volume = 1; bell.currentTime = 0;
+    const p = bell.play();
+    const end = () => { wantRing = false; };
+    bell.onended = end;
+    if (p && p.catch) p.catch(() => { end(); beepWebAudio(); });
+  } catch { wantRing = false; beepWebAudio(); }
 }
 async function keepAwake() {
   if (!S.settings?.keepAwake || !('wakeLock' in navigator) || document.hidden) return;
@@ -449,7 +492,7 @@ function showShell() { $('#tabs').classList.remove('hidden'); }
 function showLogin() {
   $('#tabs').classList.add('hidden');
   $('#app').innerHTML = `<form class="login" id="login">
-    <img src="icons/mark.svg" alt="" width="88" height="88" style="align-self:center">
+    <img src="icons/mark.png" alt="" width="88" height="88" style="align-self:center">
     <h1 style="margin:0;font-size:28px;font-weight:900;text-align:center">Tony老師<small style="display:block;font-size:14px;color:var(--muted);font-weight:700">設計師登入</small></h1>
     <input id="l-email" type="email" placeholder="Email" autocomplete="username" required aria-label="Email">
     <input id="l-pw" type="password" placeholder="密碼" autocomplete="current-password" required aria-label="密碼">
@@ -627,10 +670,9 @@ function viewSet() {
   const hol = (st.holidays || []).filter(x => x >= today()).sort();
   let canNotify = false; try { canNotify = 'Notification' in window && Notification.permission === 'default'; } catch {}
   return `<h3>服務項目</h3>
-    <div class="list">${services().map((s, i, a) => `<div class="li" style="--c:${s.color || PALETTE[7]}"><span class="dot"></span>
+    <div class="list" id="svc-list">${services().map(s => `<div class="li svc-row" data-id="${s.id}" style="--c:${s.color || PALETTE[7]}"><span class="dot"></span>
       <button class="g" data-act="svc" data-id="${s.id}"><b>${esc(s.name)}</b>${s.active === false ? '（停用）' : ''}<small>${durText(s.duration)}・${money(s.price)}</small></button>
-      <button class="ib" data-act="svcmv" data-id="${s.id}" data-n="-1" ${i ? '' : 'disabled style="opacity:.3"'} aria-label="上移">↑</button>
-      <button class="ib" data-act="svcmv" data-id="${s.id}" data-n="1" ${i < a.length - 1 ? '' : 'disabled style="opacity:.3"'} aria-label="下移">↓</button></div>`).join('')}
+      <span class="handle" data-drag="${s.id}" role="button" aria-label="按住拖曳調整順序"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M5 8h14M5 12h14M5 16h14"/></svg></span></div>`).join('')}
       <button class="li" data-act="svc" style="font-weight:900">＋ 新增服務項目</button></div>
     <h3>超時提醒</h3>
     <div class="list">
@@ -661,7 +703,7 @@ function viewSet() {
     <h3>資料</h3>
     <div class="acts c2"><button class="btn" data-act="export">匯出備份</button><button class="btn" data-act="import">匯入備份</button></div>
     ${cloud ? `<div class="acts c2"><button class="btn ghost" data-act="logout">登出</button>${CFG_SRC === 'local' ? '<button class="btn ghost" data-act="cloudoff">改回單機版</button>' : ''}</div>` : '<p class="note">單機版資料只存在這支手機，請定期匯出備份。</p>'}
-    <div style="display:flex;align-items:center;justify-content:center;gap:10px;margin:26px 0 6px;color:var(--muted);font-size:13px"><img src="icons/mark.svg" alt="" width="28" height="28">Tony the Teacher</div>`;
+    <div style="display:flex;align-items:center;justify-content:center;gap:10px;margin:26px 0 6px;color:var(--muted);font-size:13px"><img src="icons/mark.png" alt="" width="28" height="28">Tony the Teacher</div>`;
 }
 
 /* ---------- 面板 ---------- */
@@ -964,11 +1006,9 @@ const ACT = {
   newcust: () => editCustomer(null),
   mon: t => { const [y, m] = U.month.split('-').map(Number); const d = new Date(y, m - 1 + +t.dataset.n, 1); U.month = d.getFullYear() + '-' + pad(d.getMonth() + 1); render(); },
   svc: t => editService(S.services.find(s => s.id === t.dataset.id)),
-  svcmv: t => { const list = services(), i = list.findIndex(s => s.id === t.dataset.id), j = i + +t.dataset.n; if (j < 0 || j >= list.length) return;
-    [list[i], list[j]] = [list[j], list[i]]; list.forEach((s, k) => { if (s.order !== k) backend.put('services', { ...s, order: k }); }); },
   holadd: () => { const v = $('#hol-in').value; if (!v) return toast('請先選日期'); const h = new Set(S.settings.holidays || []); h.add(v); backend.saveSettings({ ...S.settings, holidays: [...h].filter(x => x >= today()).sort() }); toast('已加入公休'); },
   holdel: t => backend.saveSettings({ ...S.settings, holidays: (S.settings.holidays || []).filter(x => x !== t.dataset.d) }),
-  testsound: () => { unlockAudio(); chime(); },
+  testsound: () => { unlockAudio(); chime(); toast('正在播放提醒聲…（沒聽到請把音量調大）'); },
   notifyperm: async () => { try { await Notification.requestPermission(); } catch {} render(); },
   copylink: () => { const l = bookLink(); navigator.clipboard?.writeText(l).then(() => toast('已複製連結'), () => prompt('複製這個連結', l)); },
   sharelink: async () => { const l = bookLink(); try { if (navigator.share) await navigator.share({ title: S.settings.shopName + '｜線上預約', text: '線上預約這裡點 ↓', url: l }); else { await navigator.clipboard.writeText(l); toast('已複製連結'); } } catch {} },
@@ -995,6 +1035,38 @@ const CHG = {
 $('#app').addEventListener('click', e => { const t = e.target.closest('[data-act]'); if (t && ACT[t.dataset.act]) ACT[t.dataset.act](t, e); });
 $('#app').addEventListener('change', e => { const t = e.target.closest('[data-chg]'); if (t && CHG[t.dataset.chg]) CHG[t.dataset.chg](t, e); });
 $('#app').addEventListener('input', e => { if (e.target.dataset.inp === 'q') { U.q = e.target.value; renderCustList(); } });
+/* 服務項目：按住 ≡ 拖曳排序 */
+$('#app').addEventListener('pointerdown', e => {
+  const h = e.target.closest('[data-drag]'); if (!h) return;
+  e.preventDefault();
+  const row = h.closest('.svc-row'), rows = [...row.parentElement.querySelectorAll('.svc-row')];
+  const rects = rows.map(r => r.getBoundingClientRect()), idx = rows.indexOf(row), H = rects[idx].height, y0 = e.clientY;
+  let to = idx;
+  row.classList.add('dragging');
+  try { h.setPointerCapture(e.pointerId); } catch {}
+  try { navigator.vibrate?.(15); } catch {}
+  const move = ev => {
+    const dy = Math.max(rects[0].top - rects[idx].top, Math.min(rects[rects.length - 1].top - rects[idx].top, ev.clientY - y0));
+    row.style.transform = `translateY(${dy}px)`;
+    const cy = rects[idx].top + H / 2 + dy;
+    to = rects.reduce((n, r, i) => n + (i !== idx && r.top + r.height / 2 < cy ? 1 : 0), 0);
+    rows.forEach((r, i) => {
+      if (i === idx) return;
+      const shift = idx < to && i > idx && i <= to ? -H : idx > to && i >= to && i < idx ? H : 0;
+      r.style.transition = 'transform .15s'; r.style.transform = shift ? `translateY(${shift}px)` : '';
+    });
+  };
+  const up = () => {
+    h.removeEventListener('pointermove', move); h.removeEventListener('pointerup', up); h.removeEventListener('pointercancel', up);
+    rows.forEach(r => { r.style.transform = ''; r.style.transition = ''; }); row.classList.remove('dragging');
+    if (to !== idx) {
+      const list = services(); const [m] = list.splice(idx, 1); list.splice(to, 0, m);
+      list.forEach((sv, k) => { if (sv.order !== k) backend.put('services', { ...sv, order: k }); });
+      toast('順序已更新');
+    }
+  };
+  h.addEventListener('pointermove', move); h.addEventListener('pointerup', up); h.addEventListener('pointercancel', up);
+});
 $('#tabs').addEventListener('click', e => { const t = e.target.closest('[data-tab]'); if (t) { U.tab = t.dataset.tab; if (U.tab === 'day') U.date = today(); window.scrollTo(0, 0); render(); } });
 $('#plus').onclick = () => openForm({ date: U.tab === 'day' ? U.date : today() });
 $('#import-file').onchange = async e => {

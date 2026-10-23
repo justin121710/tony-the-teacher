@@ -5,7 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#FFF7EE">
 <title>線上預約</title>
-<link rel="icon" type="image/svg+xml" href="icons/icon.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <script src="config.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -111,7 +112,7 @@ async function start() {
   const t0 = new Date(), todayS = ds(t0), days = [];
   for (let i = 0; i < (info.bookAheadDays || 30); i++) days.push(ds(new Date(t0.getFullYear(), t0.getMonth(), t0.getDate() + i)));
 
-  const head = () => `<div class="top">${st.step > 1 ? `<button class="back" data-a="back" aria-label="上一步">${BACK}</button>` : `<span class="shop" style="display:flex;align-items:center;gap:8px"><img src="icons/mark.svg" alt="" width="30" height="30">${esc(info.shopName)}</span>`}
+  const head = () => `<div class="top">${st.step > 1 ? `<button class="back" data-a="back" aria-label="上一步">${BACK}</button>` : `<span class="shop" style="display:flex;align-items:center;gap:8px"><img src="icons/mark.png" alt="" width="30" height="30">${esc(info.shopName)}</span>`}
     <div class="dots" aria-label="第 ${st.step} 步，共 3 步">${[1, 2, 3].map(i => `<i class="${i < st.step ? 'on' : i === st.step ? 'cur' : ''}"></i>`).join('')}</div></div>`;
   const chips = () => `<div class="chosen">${chosen().map(s => `<span style="--c:${s.color || '#D7C3A8'}">${esc(s.name)}</span>`).join('')}<em>約 ${durText(dur())}・${money(price())}</em></div>`;
 
