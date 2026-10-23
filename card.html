@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#FFF7EE">
+<title>預約 QR 卡｜Tony老師</title>
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<script src="qr.js"></script>
+<style>
+:root{--bg:#FFF7EE;--ink:#1B1B1F;--muted:#6E6A66;--soft:#F1E7DC}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 -apple-system,"PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif}
+main{max-width:520px;margin:0 auto;padding:calc(env(safe-area-inset-top) + 16px) 16px calc(24px + env(safe-area-inset-bottom))}
+h1{font-size:22px;font-weight:900;margin:4px 4px 4px}
+.note{font-size:14px;color:var(--muted);margin:0 4px 14px;line-height:1.6}
+#card{width:100%;display:block;border-radius:18px;box-shadow:0 8px 28px rgba(27,27,31,.12);background:#fff}
+.acts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}
+.btn{min-height:54px;border-radius:18px;background:#fff;font:inherit;font-weight:900;border:0;cursor:pointer;color:var(--ink);text-decoration:none;display:grid;place-items:center}
+.btn.ink{background:var(--ink);color:#fff}
+.full{grid-column:1/-1}
+.err{background:#fff;border-radius:18px;padding:22px;text-align:center}
+@media print{
+  @page{size:A5 portrait;margin:0}
+  body{background:#fff}
+  main{max-width:none;padding:0}
+  h1,.note,.acts{display:none}
+  #card{width:100%;height:100vh;object-fit:contain;border-radius:0;box-shadow:none}
+}
+</style>
+</head>
+<body>
+<main id="m">
+  <h1>客人預約 QR 卡</h1>
+  <p class="note">存成圖片傳 LINE、發 IG 限動，或列印貼在店裡。客人用手機相機掃描就能直接預約。<br>iPhone 也可以長按圖片 →「加入照片」。</p>
+  <img id="card" alt="線上預約 QR 卡">
+  <div class="acts">
+    <button class="btn ink" id="dl">下載圖片</button>
+    <button class="btn" id="share">分享</button>
+    <button class="btn full" id="print">列印（A5，可存成 PDF）</button>
+  </div>
+</main>
+<script>
+(async () => {
+  const q = new URLSearchParams(location.hash.slice(1));
+  const url = q.get('u') || '', shop = q.get('n') || '線上預約', phone = q.get('p') || '', line = q.get('l') || '';
+  if (!/^https?:\/\//.test(url)) {
+    document.getElementById('m').innerHTML = '<div class="err"><h1>找不到預約連結</h1><p class="note">請從 Tony老師 APP 的「管理 → 設定 → 客人線上預約 → 預約 QR 卡」開啟這一頁。</p></div>';
+    return;
+  }
+  const W = 1240, H = 1754, c = document.createElement('canvas'); c.width = W; c.height = H;   // A5 比例，150dpi
+  const g = c.getContext('2d');
+  const F = (w, s) => `${w} ${s}px -apple-system,"PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif`;
+  try { await document.fonts.ready; } catch {}
+  const logo = await new Promise(r => { const i = new Image(); i.onload = () => r(i); i.onerror = () => r(null); i.src = 'icons/mark.png'; });
+  const rr = (x, y, w, h, r) => { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); };
+  // 底色與色帶
+  g.fillStyle = '#FFF7EE'; g.fillRect(0, 0, W, H);
+  ['#FF8A65', '#6EC6FF', '#B79CFF', '#FFD54A', '#63D9B5'].forEach((col, i) => { g.fillStyle = col; g.fillRect(i * W / 5, 0, W / 5 + 1, 22); });
+  // 標頭
+  let y = 110;
+  if (logo) { const s = 150; g.drawImage(logo, W / 2 - s / 2, y, s, s); y += s + 30; }
+  g.textAlign = 'center'; g.fillStyle = '#6E6A66'; g.font = F(700, 40);
+  g.fillText(shop, W / 2, y + 36); y += 70;
+  g.fillStyle = '#1B1B1F'; g.font = F(900, 108); g.fillText('線上預約', W / 2, y + 100); y += 140;
+  g.fillStyle = '#6E6A66'; g.font = F(500, 40); g.fillText('手機相機掃一掃，1 分鐘完成', W / 2, y + 30); y += 80;
+  // QR
+  const m = TonyQR.make(url), box = 640, cx = (W - box) / 2;
+  g.save(); g.shadowColor = 'rgba(27,27,31,.10)'; g.shadowBlur = 40; g.shadowOffsetY = 12; g.fillStyle = '#fff'; rr(cx, y, box, box, 48); g.fill(); g.restore();
+  const pad = 44, cell = Math.floor((box - pad * 2) / m.size), qs = cell * m.size, qx = Math.round(W / 2 - qs / 2), qy = Math.round(y + box / 2 - qs / 2);
+  g.fillStyle = '#1B1B1F';
+  for (let yy = 0; yy < m.size; yy++) for (let xx = 0; xx < m.size; xx++) if (m.get(xx, yy)) g.fillRect(qx + xx * cell, qy + yy * cell, cell, cell);
+  y += box + 70;
+  // 三步驟
+  const steps = [['#FF8A65', '1', '選服務'], ['#6EC6FF', '2', '選時間'], ['#63D9B5', '3', '留電話送出']];
+  const sw = 330, gap = 25, sx = (W - (sw * 3 + gap * 2)) / 2;
+  steps.forEach(([col, n, t], i) => {
+    const x = sx + i * (sw + gap);
+    g.fillStyle = col; rr(x, y, sw, 150, 36); g.fill();
+    g.fillStyle = '#1B1B1F'; g.beginPath(); g.arc(x + 62, y + 75, 34, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#fff'; g.font = F(900, 40); g.textAlign = 'center'; g.fillText(n, x + 62, y + 89);
+    g.fillStyle = '#1B1B1F'; g.font = F(900, t.length > 4 ? 40 : 46); g.textAlign = 'left'; g.fillText(t, x + 112, y + 91);
+  });
+  y += 150 + 56;
+  g.textAlign = 'center'; g.fillStyle = '#6E6A66'; g.font = F(500, 36);
+  g.fillText('送出後由設計師確認，會再與你聯絡', W / 2, y); y += 70;
+  const contact = [phone && '電話 ' + phone, line && 'LINE ' + line].filter(Boolean).join('　｜　');
+  if (contact) { g.fillStyle = '#1B1B1F'; g.font = F(700, 38); g.fillText(contact, W / 2, y); }
+  g.fillStyle = '#A39C95'; g.font = F(500, 28); g.fillText('Tony老師・線上預約', W / 2, H - 70);
+  const img = document.getElementById('card'); img.src = c.toDataURL('image/png');
+  const fname = `${shop}-線上預約QR.png`;
+  document.getElementById('dl').onclick = () => { const a = document.createElement('a'); a.href = img.src; a.download = fname; document.body.appendChild(a); a.click(); a.remove(); };
+  document.getElementById('print').onclick = () => window.print();
+  document.getElementById('share').onclick = async () => {
+    try {
+      const blob = await new Promise(r => c.toBlob(r, 'image/png')), file = new File([blob], fname, { type: 'image/png' });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) await navigator.share({ files: [file], title: shop + ' 線上預約' });
+      else if (navigator.share) await navigator.share({ title: shop + ' 線上預約', url });
+      else document.getElementById('dl').click();
+    } catch {}
+  };
+})();
+</script>
+</body>
+</html>

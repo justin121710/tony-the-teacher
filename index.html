@@ -171,6 +171,13 @@ function bookLink() {
   if (CFG_SRC === 'local' && FIREBASE_CONFIG) { const { apiKey, authDomain, projectId, appId } = FIREBASE_CONFIG; base += '#c=' + b64url(JSON.stringify({ apiKey, authDomain, projectId, appId })); }
   return base;
 }
+function cardLink() {
+  let base = SITE + 'card.html';
+  try { if (/^https?:$/.test(location.protocol)) base = new URL('card.html', location.href).href.split(/[?#]/)[0]; } catch {}
+  const st = S.settings || {};
+  const q = new URLSearchParams({ u: bookLink(), n: st.shopName || '', p: st.shopPhone || '', l: st.shopLine || '' });
+  return base + '#' + q.toString();
+}
 function parseConfig(text) {
   let t = String(text || '').trim(); const i = t.indexOf('{'), j = t.lastIndexOf('}');
   if (i < 0 || j < i) throw new Error('找不到設定內容');
@@ -697,7 +704,8 @@ function viewSet() {
       <div class="li"><span class="g">客人可預約幾天內</span><select data-chg="num" data-k="bookAheadDays" style="width:auto;background:var(--soft);min-height:44px">${[7, 14, 30, 60, 90].map(n => `<option value="${n}" ${st.bookAheadDays == n ? 'selected' : ''}>${n} 天</option>`).join('')}</select></div></div>
     <h3>客人線上預約</h3>
     ${cloud ? `<div class="list" style="padding:14px 16px"><div style="word-break:break-all;font-size:13px;color:var(--muted);margin-bottom:10px;max-height:4.5em;overflow:hidden">${esc(bookLink())}</div>
-      <div class="acts" style="margin:0"><button class="btn ink" data-act="copylink">複製連結</button><button class="btn" data-act="sharelink" style="background:var(--soft)">分享</button><a class="btn" href="${esc(bookLink())}" target="_blank" rel="noopener" style="background:var(--soft)">預覽</a></div></div>
+      <div class="acts" style="margin:0"><button class="btn ink" data-act="copylink">複製連結</button><button class="btn" data-act="sharelink" style="background:var(--soft)">分享</button><a class="btn" href="${esc(bookLink())}" target="_blank" rel="noopener" style="background:var(--soft)">預覽</a></div>
+      <a class="big" href="${esc(cardLink())}" target="_blank" rel="noopener" style="margin-top:8px;text-decoration:none">預約 QR 卡（可列印、傳 LINE）</a></div>
       <div class="list" style="margin-top:8px"><button class="li" data-act="rules"><span class="g"><b>資料庫安全規則</b><small>專案 ${esc(FIREBASE_CONFIG.projectId)}・登入帳號 ${esc(backend.email())}</small></span></button></div>`
       : `<div class="list" style="padding:14px 16px"><p style="margin:0 0 12px">目前是單機版，客人還不能線上預約，資料也只在這支手機。</p><button class="big" data-act="cloudsetup">開啟雲端同步＋線上預約</button></div>`}
     <h3>資料</h3>
