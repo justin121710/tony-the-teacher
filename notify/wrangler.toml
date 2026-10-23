@@ -1,0 +1,9 @@
+# Tony老師 通知服務：Cloudflare 從 GitHub 自動部署用的設定
+# （密碼請在 Cloudflare 後台 Settings → Variables and Secrets 新增，類型選 Secret，部署不會覆蓋）
+name = "tony-notify"
+main = "worker.js"
+compatibility_date = "2025-09-01"
+
+# 每天 UTC 01:00 ＝ 台灣時間早上 9:00 傳今日行程
+[triggers]
+crons = ["0 1 * * *"]
