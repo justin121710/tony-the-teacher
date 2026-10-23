@@ -1,5 +1,5 @@
 // Tony老師：離線快取。網頁優先抓最新版，沒網路時用上次的版本。
-const CACHE = 'tony-v13';
+const CACHE = 'tony-v15';
 const SHELL = ['./', './index.html', './book.html', './config.js', './manifest.webmanifest',
   './card.html', './qr.js', './icons/mark.png', './icons/favicon-32.png', './icons/icon-192.png', './icons/apple-touch-icon.png'];
 
