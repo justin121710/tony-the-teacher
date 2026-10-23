@@ -1,7 +1,7 @@
 // Tony老師：離線快取。網頁優先抓最新版，沒網路時用上次的版本。
-const CACHE = 'tony-v1';
+const CACHE = 'tony-v2';
 const SHELL = ['./', './index.html', './book.html', './config.js', './manifest.webmanifest',
-  './icons/icon.svg', './icons/mark.svg', './icons/icon-192.png', './icons/apple-touch-icon.png'];
+  './icons/icon.svg', './icons/mark.svg', './icons/mark-white.svg', './icons/icon-192.png', './icons/apple-touch-icon.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));

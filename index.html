@@ -159,10 +159,13 @@ function readConfig() {
 }
 const [FIREBASE_CONFIG, CFG_SRC] = readConfig();
 const b64url = s => btoa(unescape(encodeURIComponent(s))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const SITE = 'https://justin121710.github.io/tony-the-teacher/';
 function bookLink() {
-  const u = new URL('book.html', location.href); u.search = ''; u.hash = '';
-  if (CFG_SRC === 'local') { const { apiKey, authDomain, projectId, appId } = FIREBASE_CONFIG; u.hash = 'c=' + b64url(JSON.stringify({ apiKey, authDomain, projectId, appId })); }
-  return u.href;
+  // 在預覽視窗或直接開檔案時，網址不是一般網址，改用正式網站的預約頁
+  let base = SITE + 'book.html';
+  try { if (/^https?:$/.test(location.protocol)) base = new URL('book.html', location.href).href.split(/[?#]/)[0]; } catch {}
+  if (CFG_SRC === 'local' && FIREBASE_CONFIG) { const { apiKey, authDomain, projectId, appId } = FIREBASE_CONFIG; base += '#c=' + b64url(JSON.stringify({ apiKey, authDomain, projectId, appId })); }
+  return base;
 }
 function parseConfig(text) {
   let t = String(text || '').trim(); const i = t.indexOf('{'), j = t.lastIndexOf('}');
@@ -497,10 +500,17 @@ function render() {
   if (!S.settings) { if (backend?.mode === 'cloud' && $('#login')) return; $('#app').innerHTML = '<div class="empty">載入中…</div>'; return; }
   document.querySelectorAll('#tabs [data-tab]').forEach(b => b.classList.toggle('on', b.dataset.tab === U.tab));
   const y = window.scrollY;
-  $('#app').innerHTML = U.tab === 'day' ? viewDay() : viewMore();
-  if (U.tab === 'more' && U.more === 'cust') renderCustList();
+  try {
+    $('#app').innerHTML = U.tab === 'day' ? viewDay() : viewMore();
+    if (U.tab === 'more' && U.more === 'cust') renderCustList();
+  } catch (e) {
+    console.error(e);
+    $('#app').innerHTML = `<div class="empty">這個畫面暫時打不開<br><small>${esc(e.message)}</small><br><br><button class="btn" data-act="gohome" style="margin:auto">回行程</button></div>`;
+  }
   window.scrollTo(0, y);
 }
+window.addEventListener('error', e => { if (e.message) toast('發生錯誤：' + e.message); });
+window.addEventListener('unhandledrejection', e => { const r = e.reason; if (r && r.code !== 'permission-denied') toast('發生錯誤：' + (r.code || r.message || r)); });
 
 /* ---------- 行程頁 ---------- */
 function viewDay() {
@@ -615,7 +625,7 @@ function viewSet() {
     return `<div class="li"><span class="wd">週${WD[i]}</span><input type="checkbox" class="tog" aria-label="週${WD[i]}營業" data-chg="hours" data-d="${i}" data-k="open" ${h.open ? 'checked' : ''}>
       ${h.open ? `<span class="tm"><input type="time" step="900" value="${h.start}" data-chg="hours" data-d="${i}" data-k="start" aria-label="開始"><span>–</span><input type="time" step="900" value="${h.end}" data-chg="hours" data-d="${i}" data-k="end" aria-label="結束"></span>` : '<span class="g" style="color:var(--muted)">公休</span>'}</div>`; }).join('');
   const hol = (st.holidays || []).filter(x => x >= today()).sort();
-  const canNotify = 'Notification' in window && Notification.permission === 'default';
+  let canNotify = false; try { canNotify = 'Notification' in window && Notification.permission === 'default'; } catch {}
   return `<h3>服務項目</h3>
     <div class="list">${services().map((s, i, a) => `<div class="li" style="--c:${s.color || PALETTE[7]}"><span class="dot"></span>
       <button class="g" data-act="svc" data-id="${s.id}"><b>${esc(s.name)}</b>${s.active === false ? '（停用）' : ''}<small>${durText(s.duration)}・${money(s.price)}</small></button>
@@ -940,6 +950,7 @@ function editService(s) {
 const ACT = {
   day: t => { U.date = addDays(U.date, +t.dataset.n); render(); },
   today: () => { U.date = today(); render(); },
+  gohome: () => { U.tab = 'day'; U.date = today(); render(); },
   ended: () => { U.showEnded = !U.showEnded; render(); },
   unlock: () => { unlockAudio(); chime(); toast('提醒聲音已開啟'); },
   new: t => openForm({ date: U.date, start: t.dataset.start ? +t.dataset.start : null }),
