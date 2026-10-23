@@ -344,6 +344,7 @@ function localBackend() {
 }
 
 /* ---------- 雲端版（Firebase） ---------- */
+const SINCE = (() => { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - 12); return ds(d); })();   // 雲端只同步近 12 個月
 async function cloudBackend() {
   const [{ initializeApp }, A, F] = await Promise.all([import(SDK + 'firebase-app.js'), import(SDK + 'firebase-auth.js'), import(SDK + 'firebase-firestore.js')]);
   const app = initializeApp(FIREBASE_CONFIG), auth = A.getAuth(app), db = F.getFirestore(app);
@@ -368,8 +369,9 @@ async function cloudBackend() {
   }
   async function cleanHolds() {
     try {
-      const snap = await F.getDocs(F.query(F.collection(db, 'holds'), F.where('date', '<', today())));
-      snap.docs.forEach(d => F.deleteDoc(d.ref).catch(() => {}));
+      const [hs, rs] = await Promise.all([F.getDocs(F.collection(db, 'holds')), F.getDocs(F.collection(db, 'requests'))]);
+      const used = new Set(rs.docs.map(d => d.data().holdId).filter(Boolean)), cut = Date.now() - 10 * 60000;
+      hs.docs.forEach(d => { const h = d.data(); if (h.date < today() || (!used.has(d.id) && (h.createdAt || 0) < cut)) F.deleteDoc(d.ref).catch(() => {}); });
     } catch {}
   }
   function offerMigrate() {
@@ -385,9 +387,9 @@ async function cloudBackend() {
     unsubs.push(F.onSnapshot(F.doc(db, 'settings', 'main'), snap => {
       if (!snap.exists()) { if (!seeded) { seeded = true; seed().catch(fail); } return; }
       S.settings = { ...clean(DEFAULT_SETTINGS), ...snap.data() }; render();
-      if (first) { first = false; setTimeout(syncPublic, 1500); keepAwake(); cleanHolds(); }
+      if (first) { first = false; setTimeout(syncPublic, 1500); keepAwake(); cleanHolds(); setInterval(cleanHolds, 30 * 60000); }
     }, fail));
-    for (const c of ['services', 'customers', 'bookings']) unsubs.push(F.onSnapshot(F.collection(db, c), snap => {
+    for (const c of ['services', 'customers', 'bookings']) unsubs.push(F.onSnapshot(c === 'bookings' ? F.query(F.collection(db, c), F.where('date', '>=', SINCE)) : F.collection(db, c), snap => {
       S[c] = snap.docs.map(d => ({ ...d.data(), id: d.id })); render();
       if (c === 'bookings' && !bkInit) { bkInit = true; setTimeout(() => offerMigrate.call(api), 1200); }
     }, fail));
@@ -410,6 +412,7 @@ async function cloudBackend() {
         showShell(); render(); subscribe();
       });
     },
+    async allBookings() { const snap = await F.getDocs(F.collection(db, 'bookings')); return snap.docs.map(d => ({ ...d.data(), id: d.id })); },
     async login(email, pw) { await A.signInWithEmailAndPassword(auth, email, pw); },
     async resetPw(email) { await A.sendPasswordResetEmail(auth, email); },
     logout() { A.signOut(auth); },
@@ -457,7 +460,7 @@ function chimeWavUrl() {
   new Int16Array(buf, 44).set(data);
   return URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }));
 }
-function markAudioOK() { if (!audioOK) { audioOK = true; if (U.tab === 'day' && !sheetOpen()) render(); } }
+function markAudioOK() { if (!audioOK) { audioOK = true; const el = document.querySelector('.banner.soft[data-act="unlock"]'); if (el) setTimeout(() => el.remove(), 0); } }
 function unlockAudio() {
   try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch {}
   try {
@@ -982,7 +985,14 @@ function openRequest(id) {
       backend.remove('requests', q.id);
       openSheet(`<h1>已接受</h1><p class="note">要通知客人嗎？</p>${contactBtns(q.phone, msgOk)}<button class="btn" data-s="close" style="width:100%">完成</button>`, { close: closeSheet });
     },
-    no: () => { if (confirm('婉拒並刪除這筆線上預約？')) { backend.remove('requests', q.id); closeSheet(); toast('已婉拒，記得通知客人'); } }
+    no: () => {
+      if (!confirm('婉拒這筆線上預約？')) return;
+      backend.remove('requests', q.id);
+      const msgNo = `您好，很抱歉，您申請的預約設計師當天無法安排：\n\n${bookingInfo(q)}\n\n歡迎改約其他時間：${bookLink()}\n\n— ${S.settings.shopName}`;
+      openSheet(`<h1>已婉拒</h1><p class="note">通知客人改約其他時間（訊息已寫好，可以再修改）：</p>
+        ${q.phone ? contactBtns(q.phone, msgNo) : '<p class="note">這位客人沒有留電話。</p>'}
+        <button class="btn" data-s="close" style="width:100%">關閉</button>`, { close: closeSheet });
+    }
   });
 }
 function openCustomer(id) {
@@ -1056,8 +1066,10 @@ const ACT = {
   rules: () => showRulesHelp(false),
   cloudsetup: () => cloudSetup(),
   cloudoff: () => { if (confirm('改回單機版？雲端資料不會被刪除，之後可以再切回來。')) { localStorage.removeItem(LS_FB); location.reload(); } },
-  export: () => {
-    const data = JSON.stringify({ app: 'salon', version: 2, exportedAt: new Date().toISOString(), settings: S.settings, services: S.services, customers: S.customers, bookings: S.bookings }, null, 1);
+  export: async () => {
+    let bookings = S.bookings;
+    if (backend.allBookings) { try { toast('整理中…'); bookings = await backend.allBookings(); } catch { toast('只匯出近一年的資料'); } }
+    const data = JSON.stringify({ app: 'salon', version: 2, exportedAt: new Date().toISOString(), settings: S.settings, services: S.services, customers: S.customers, bookings }, null, 1);
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([data], { type: 'application/json' })); a.download = `預約備份-${today()}.json`; document.body.appendChild(a); a.click(); a.remove();
   },
   import: () => $('#import-file').click(),
