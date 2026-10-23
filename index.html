@@ -84,7 +84,15 @@ nav.tabs .plus{width:72px;height:72px;border-radius:26px;background:var(--ink);c
 .tile.k1{height:104px;padding:10px 12px;align-items:flex-start}
 .tile .k1c{font-size:46px;font-weight:900;line-height:1;letter-spacing:-1px}
 .tile .k1n{font-size:13px;font-weight:700;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
-.tile.on{box-shadow:inset 0 0 0 3px var(--ink)}
+.tile.on{box-shadow:inset 0 0 0 5px var(--ink)}
+.tile.k1.on{padding:12px 14px}
+.ftitle{min-height:44px;display:flex;align-items:center;flex-wrap:wrap;gap:2px}
+.ftitle .ch{display:inline-block;font-size:36px;font-weight:900;line-height:1.1;color:var(--c);-webkit-text-stroke:1.6px var(--ink);paint-order:stroke fill}
+.ftitle .plus{display:inline-block;font-size:28px;font-weight:900;color:var(--ink);margin:0 4px}
+.ftitle .new{animation:pop .32s cubic-bezier(.3,1.5,.5,1)}
+.ftitle .swap{animation:fadein .22s ease-out}
+@keyframes pop{0%{transform:scale(.3) translateY(8px);opacity:0}100%{transform:none;opacity:1}}
+@keyframes fadein{from{opacity:0;transform:translateY(6px)}}
 .chips{display:flex;gap:6px;flex-wrap:wrap}
 .chip{height:44px;padding:0 16px;border-radius:22px;background:var(--soft);font-weight:700;font-size:15px;display:inline-flex;align-items:center;position:relative}
 .chip.on{background:var(--ink);color:#fff}
@@ -239,6 +247,7 @@ const today = () => ds(new Date());
 const nowMin = () => { const d = new Date(); return d.getHours() * 60 + d.getMinutes(); };
 const WD = '日一二三四五六';
 const money = n => '$' + Math.round(Number(n) || 0).toLocaleString('zh-TW');
+const hmm = m => Math.floor(m / 60) + ':' + pad(m % 60);
 const durText = m => m >= 60 ? Math.floor(m / 60) + ' 小時' + (m % 60 ? ' ' + (m % 60) + ' 分' : '') : m + ' 分';
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 const byStart = (a, b) => (a.date || '').localeCompare(b.date || '') || toMin(a.start) - toMin(b.start);
@@ -830,9 +839,10 @@ function openForm(init = {}) {
     svc: ex ? ex.services.map(s => s.id) : (init.serviceIds || []).filter(lookup), customerId: ex?.customerId || init.customerId || null,
     dur: ex?.duration ?? 0, price: ex?.price ?? 0, durT: !!ex, priceT: !!ex };
   if (f.date < today() && !ex) f.date = today();
+  let shown = null;
   const tiles = [...activeServices(), ...f.svc.map(lookup).filter(s => s && !activeServices().some(a => a.id === s.id))];
-  const body = `<h1>${ex ? '編輯預約' : '做什麼？'}</h1>
-    <div class="tiles" id="f-svc">${tiles.map(s => `<button class="tile k1" data-s="svc" data-id="${s.id}" style="--c:${s.color || PALETTE[7]}" aria-label="${esc(s.name)}"><span class="k1c">${esc([...s.name][0] || '')}</span><span class="k1n">${esc(s.name)}・${durText(s.duration)}</span></button>`).join('')}</div>
+  const body = `<h1 class="ftitle" id="f-title">${ex ? '編輯預約' : '做什麼？'}</h1>
+    <div class="tiles" id="f-svc">${tiles.map(s => `<button class="tile k1" data-s="svc" data-id="${s.id}" style="--c:${s.color || PALETTE[7]}" aria-label="${esc(s.name)}"><span class="k1c">${esc([...s.name][0] || '')}</span><span class="k1n">${esc(s.name)}・${hmm(s.duration)}</span></button>`).join('')}</div>
     <div class="lbl"><h2>什麼時候？</h2><span id="f-sum"></span></div>
     <div class="chips" id="f-days"></div>
     <div class="slots" id="f-slots" style="margin-top:10px"></div>
@@ -865,12 +875,25 @@ function openForm(init = {}) {
     $('#f-name', sh).oninput = sugg; $('#f-phone', sh).oninput = sugg;
     recalc();
   });
+  function title(chosen) {
+    const el = $('#f-title'); if (!el) return;
+    const ids = chosen.map(s => s.id), prev = shown;
+    shown = ids;
+    if (!ids.length) {
+      if (ex) return;
+      el.innerHTML = `<span${prev && prev.length ? ' class="swap"' : ''} style="display:inline-block">做什麼？</span>`; return;
+    }
+    el.innerHTML = chosen.map((s, i) => (i ? '<span class="plus">+</span>' : '') +
+      `<span class="ch${!prev || !prev.includes(s.id) || !prev.length ? ' new' : ''}" style="--c:${s.color || PALETTE[7]}">${esc([...s.name][0] || '')}</span>`).join('');
+    el.setAttribute('aria-label', chosen.map(s => s.name).join('＋'));
+  }
   function recalc() {
     const chosen = f.svc.map(lookup).filter(Boolean);
     if (!f.durT) f.dur = chosen.reduce((a, s) => a + s.duration, 0);
     if (!f.priceT) f.price = chosen.reduce((a, s) => a + s.price, 0);
     $('#f-dur').value = f.dur || ''; $('#f-price').value = f.price || '';
     document.querySelectorAll('#f-svc .tile').forEach(c => c.classList.toggle('on', f.svc.includes(c.dataset.id)));
+    title(chosen);
     slots();
   }
   function slots() {
