@@ -117,10 +117,12 @@ async function sendAll(env, subject, text) {
 /* ---------- 訊息內容 ---------- */
 function requestText(q, shop) {
   const end = toHM(toMin(q.start) + (q.duration || 0));
-  return [`【${shop}】新的線上預約`, '',
+  const ed = !!q.editOf;
+  return [ed ? `【${shop}】客人修改了預約` : `【${shop}】新的線上預約`, '',
+    ed && q.prevText ? `原本：${q.prevText}` : null, ed ? '改成 ↓' : null,
     `日期：${dateLabel(q.date)}`, `時間：${q.start}–${end}（約 ${durText(q.duration || 0)}）`, `項目：${svcNames(q)}`, `費用：${money(q.price)}`,
     `客人：${q.name || '未留稱呼'}　${q.phone || ''}`, q.note ? `備註：${q.note}` : null, '',
-    '請打開 Tony老師 APP 接受或婉拒。'].filter(x => x !== null).join('\n');
+    ed ? '請打開 Tony老師 APP 接受或婉拒這次修改。' : '請打開 Tony老師 APP 接受或婉拒。'].filter(x => x !== null).join('\n');
 }
 function summaryText(day, bookings, pending, shop) {
   const list = bookings.filter(b => b.status === 'booked' || b.status === 'done').sort((a, b) => toMin(a.start) - toMin(b.start));
@@ -151,7 +153,7 @@ async function handleNew(req, env) {
   const why = !q ? '資料庫找不到這筆預約' : q.status !== 'pending' ? '狀態不是待確認：' + q.status : Math.abs(age) > 600 ? `送出時間差 ${age} 秒（超過 10 分鐘，檢查手機時間）` : '';
   if (why) { console.log('[new] 不通知', id, why); return json({ ok: false, error: why }, 404); }
   const shop = await shopName(env);
-  const res = await sendAll(env, `新的線上預約：${dateLabel(q.date)} ${q.start} ${svcNames(q)}`, requestText(q, shop));
+  const res = await sendAll(env, `${q.editOf ? '客人修改了預約' : '新的線上預約'}：${dateLabel(q.date)} ${q.start} ${svcNames(q)}`, requestText(q, shop));
   console.log('[new] 已處理', id, JSON.stringify(res));
   return json({ ok: true, ...res });
 }

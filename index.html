@@ -223,7 +223,10 @@ service cloud.firestore {
       allow delete: if isOwner();
     }
     match /requests/{id} {
-      allow create: if request.resource.data.keys().hasOnly(['date','start','duration','price','services','name','phone','note','status','createdAt','holdId'])
+      allow create: if request.resource.data.keys().hasOnly(['date','start','duration','price','services','name','phone','note','status','createdAt','holdId','editKey','editOf','prevText'])
+        && (!('editKey' in request.resource.data) || (request.resource.data.editKey is string && request.resource.data.editKey.size() >= 16 && request.resource.data.editKey.size() <= 64))
+        && (!('editOf' in request.resource.data) || (request.resource.data.editOf is string && request.resource.data.editOf.size() <= 64))
+        && (!('prevText' in request.resource.data) || (request.resource.data.prevText is string && request.resource.data.prevText.size() <= 80))
         && request.resource.data.status == 'pending'
         && request.resource.data.date is string && request.resource.data.date.size() == 10
         && request.resource.data.start is string && request.resource.data.start.size() == 5
@@ -405,9 +408,14 @@ async function cloudBackend() {
     }, fail));
     let reqInit = false;
     unsubs.push(F.onSnapshot(F.collection(db, 'requests'), snap => {
-      const added = snap.docChanges().some(ch => ch.type === 'added');
+      const addedDocs = snap.docChanges().filter(ch => ch.type === 'added').map(ch => ch.doc.data());
       S.requests = snap.docs.map(d => ({ ...d.data(), id: d.id }));
-      if (reqInit && added) { toast('有新的線上預約'); chime(); sysNotify('新的線上預約', '打開 Tony老師 確認'); }
+      // 客人修改了「還沒確認」的申請：新的取代舊的，舊的自動移除
+      supersededRequests().forEach(p => api.remove('requests', p.id));
+      if (reqInit && addedDocs.length) {
+        const ed = addedDocs.some(d => d.editOf);
+        toast(ed ? '客人修改了預約' : '有新的線上預約'); chime(); sysNotify(ed ? '客人修改了預約' : '新的線上預約', '打開 Tony老師 確認');
+      }
       reqInit = true;
       const dates = new Set(snap.docChanges().map(ch => ch.doc.data().date)); render(); dates.forEach(syncBusy);
     }, fail));
@@ -599,7 +607,7 @@ function viewDay() {
     <button class="ib" data-act="day" data-n="1" aria-label="後一天">›</button>
     ${isT ? `<span class="clock num" id="clock">${toHM(n)}</span>` : '<button class="pill" data-act="today" style="margin-left:auto">回今天</button>'}</div>`;
   if (S.settings.alerts !== false && !audioOK) h += `<button class="banner soft" data-act="unlock"><span>點一下，開啟超時提醒聲音</span>${ICON.bell}</button>`;
-  if (S.requests.length) h += `<button class="banner" data-act="reqs"><span>線上預約待確認</span><b class="num">${S.requests.length}</b></button>`;
+  if (S.requests.length) h += `<button class="banner" data-act="reqs"><span>${S.requests.some(q => q.editOf) ? '線上預約／修改待確認' : '線上預約待確認'}</span><b class="num">${S.requests.length}</b></button>`;
   const all = S.bookings.filter(b => b.date === d);
   const booked = all.filter(b => b.status === 'booked').sort(byStart);
   const ended = all.filter(b => b.status !== 'booked').sort(byStart);
@@ -651,10 +659,18 @@ function rowHtml(b, past) {
     <span class="m"><b>${esc(svcNames(b))}</b>${who(b) || b.source === 'online' ? `<small>${esc(who(b))}${b.source === 'online' ? '・線上' : ''}</small>` : ''}</span>
     <span class="r">${st || '至 ' + toHM(endOf(b))}</span></button>`;
 }
+function editTarget(q) {
+  if (!q || !q.editOf || !q.editKey) return null;
+  return S.bookings.find(b => b.reqId === q.editOf && b.editKey && b.editKey === q.editKey && b.status === 'booked') || null;
+}
+function supersededRequests() {
+  return S.requests.filter(p => p.editKey && S.requests.some(q => q.id !== p.id && q.editOf && q.editKey === p.editKey && (p.editOf || p.id) === q.editOf && (q.createdAt || 0) > (p.createdAt || 0)));
+}
+function reqLabel(q) { return !q.editOf ? '待確認' : editTarget(q) ? '修改申請' : '已修改・待確認'; }
 function reqRow(q, withDate) {
   return `<button class="row req" data-act="req" data-id="${q.id}" style="--c:${q.services?.[0]?.color || PALETTE[7]}">
     <span class="t num">${q.start}</span>
-    <span class="m"><b>${esc((q.services || []).map(s => s.name).join('＋'))}</b><small>${withDate ? dayWord(q.date) + '・' : ''}待確認</small></span>
+    <span class="m"><b>${esc((q.services || []).map(s => s.name).join('＋'))}</b><small>${withDate ? dayWord(q.date) + '・' : ''}${reqLabel(q)}</small></span>
     <span class="r">${money(q.price)}</span></button>`;
 }
 const gapHtml = (a, b) => `<button class="gap" data-act="new" data-start="${a}"><span class="num">${toHM(a)}</span><span class="g">空檔 ${durText(b - a)}</span><span class="p">+</span></button>`;
@@ -987,18 +1003,19 @@ function openRequests() {
 }
 function openRequest(id) {
   const q = S.requests.find(x => x.id === id); if (!q) return;
+  if (editTarget(q)) return openEditRequest(q, editTarget(q));
   const clash = overlaps(toMin(q.start), toMin(q.start) + q.duration, busyRanges(q.date, q.id));
   const msgOk = `您好，您的線上預約已確認：\n\n${bookingInfo(q)}\n\n${S.settings.shopName} 期待您的光臨！`;
   openSheet(`<div class="head-card" style="--c:${q.services?.[0]?.color || PALETTE[7]};margin-top:8px"><span class="badge">待確認</span><span class="num" style="font-size:22px;font-weight:800">${dayWord(q.date)} ${q.start} – ${toHM(toMin(q.start) + q.duration)}</span>
       <span class="svc">${esc((q.services || []).map(s => s.name).join('＋'))}</span><div class="tags">${[q.name, q.phone].filter(Boolean).map(t => `<span class="tag">${esc(t)}</span>`).join('')}</div></div>
-    <dl class="kv"><div><dt>金額</dt><dd>${money(q.price)}</dd></div>${q.note ? `<div><dt>備註</dt><dd>${esc(q.note)}</dd></div>` : ''}</dl>
+    <dl class="kv"><div><dt>金額</dt><dd>${money(q.price)}</dd></div>${q.editOf && q.prevText ? `<div><dt>客人改過</dt><dd>原本 ${esc(q.prevText)}</dd></div>` : ''}${q.note ? `<div><dt>備註</dt><dd>${esc(q.note)}</dd></div>` : ''}</dl>
     ${clash ? '<p class="note" style="color:var(--red)">這個時段與其他預約重疊</p>' : ''}
     <div class="acts c2"><button class="btn ink" data-s="ok">接受</button><button class="btn red" data-s="no">婉拒</button></div>
     ${contactBtns(q.phone, msgOk)}`, {
     ok: () => {
       if (clash && !confirm('與其他預約重疊，仍要接受？')) return;
       const c = ensureCustomer(q.name || '', q.phone, null);
-      backend.put('bookings', { id: uid(), date: q.date, start: q.start, duration: q.duration, price: q.price, services: q.services || [], customerId: c?.id || null, customerName: q.name || '', phone: q.phone || '', note: q.note || '', status: 'booked', source: 'online', createdAt: Date.now() });
+      backend.put('bookings', { id: uid(), date: q.date, start: q.start, duration: q.duration, price: q.price, services: q.services || [], customerId: c?.id || null, customerName: q.name || '', phone: q.phone || '', note: q.note || '', status: 'booked', source: 'online', createdAt: Date.now(), reqId: q.editOf || q.id, editKey: q.editKey || '' });
       backend.remove('requests', q.id);
       openSheet(`<h1>已接受</h1><p class="note">要通知客人嗎？</p>${contactBtns(q.phone, msgOk)}<button class="btn" data-s="close" style="width:100%">完成</button>`, { close: closeSheet });
     },
@@ -1009,6 +1026,37 @@ function openRequest(id) {
       openSheet(`<h1>已婉拒</h1><p class="note">通知客人改約其他時間（訊息已寫好，可以再修改）：</p>
         ${q.phone ? contactBtns(q.phone, msgNo) : '<p class="note">這位客人沒有留電話。</p>'}
         <button class="btn" data-s="close" style="width:100%">關閉</button>`, { close: closeSheet });
+    }
+  });
+}
+function openEditRequest(q, b) {
+  const sameSlot = r => b.date === q.date && r[0] === toMin(b.start) && r[1] === endOf(b);
+  const clash = overlaps(toMin(q.start), toMin(q.start) + q.duration, busyRanges(q.date, q.id).filter(r => !sameSlot(r)));
+  const line = x => `${dayWord(x.date)} ${x.start}–${toHM(toMin(x.start) + x.duration)}`;
+  const shop = S.settings.shopName;
+  const msgOk = `您好，您的預約已修改完成：\n\n${bookingInfo(q)}\n\n${shop} 期待您的光臨！`;
+  const msgNo = `您好，很抱歉，修改後的時間（${dayWord(q.date)} ${q.start}）無法安排，原本的預約維持不變：\n\n${bookingInfo(b)}\n\n如需再調整請直接與我們聯絡。— ${shop}`;
+  openSheet(`<div class="head-card" style="--c:${q.services?.[0]?.color || PALETTE[7]};margin-top:8px"><span class="badge">修改申請</span>
+      <span class="num" style="font-size:22px;font-weight:800">${line(q)}</span>
+      <span class="svc">${esc((q.services || []).map(s => s.name).join('＋'))}</span><div class="tags">${[q.name || b.customerName, q.phone || b.phone].filter(Boolean).map(t => `<span class="tag">${esc(t)}</span>`).join('')}</div></div>
+    <dl class="kv">
+      <div><dt style="white-space:nowrap;flex:none">原本</dt><dd style="color:var(--muted)">${line(b)}　${esc(svcNames(b))}　${money(b.price)}</dd></div>
+      <div><dt style="white-space:nowrap;flex:none">改成</dt><dd>${line(q)}　${esc((q.services || []).map(s => s.name).join('＋'))}　${money(q.price)}</dd></div>
+      ${q.note ? `<div><dt>備註</dt><dd>${esc(q.note)}</dd></div>` : ''}</dl>
+    ${clash ? '<p class="note" style="color:var(--red)">新的時段與其他預約重疊</p>' : ''}
+    <p class="note">接受：原本的預約改成新的時間與項目。婉拒：原本的預約不變。</p>
+    <div class="acts c2"><button class="btn ink" data-s="ok">接受修改</button><button class="btn red" data-s="no">婉拒修改</button></div>
+    ${contactBtns(q.phone || b.phone, msgOk)}`, {
+    ok: () => {
+      if (clash && !confirm('與其他預約重疊，仍要接受？')) return;
+      backend.put('bookings', { ...b, date: q.date, start: q.start, duration: q.duration, price: q.price, services: q.services || [], customerName: q.name || b.customerName, phone: q.phone || b.phone, note: q.note || '', editedAt: Date.now() });
+      backend.remove('requests', q.id);
+      openSheet(`<h1>已接受修改</h1><p class="note">通知客人新的時間：</p>${contactBtns(q.phone || b.phone, msgOk)}<button class="btn" data-s="close" style="width:100%">完成</button>`, { close: closeSheet });
+    },
+    no: () => {
+      if (!confirm('婉拒這次修改？原本的預約會保留。')) return;
+      backend.remove('requests', q.id);
+      openSheet(`<h1>已婉拒修改</h1><p class="note">告訴客人原本的預約不變（訊息已寫好）：</p>${contactBtns(q.phone || b.phone, msgNo)}<button class="btn" data-s="close" style="width:100%">關閉</button>`, { close: closeSheet });
     }
   });
 }

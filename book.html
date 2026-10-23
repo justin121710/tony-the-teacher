@@ -38,7 +38,7 @@ h1{font-size:32px;font-weight:900;margin:14px 6px 16px}
 .date:disabled{background:transparent;color:#A39C95}
 h2{font-size:18px;font-weight:900;margin:22px 6px 12px}
 .slots{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
-.slot{height:58px;border-radius:20px;background:var(--card);font-size:19px;font-weight:700}
+.slot{height:58px;border-radius:20px;background:var(--card);font-size:19px;font-weight:700;display:grid;place-items:center;text-align:center;padding:0}
 .slot.on{background:var(--ink);color:#fff}
 .muted{color:var(--muted)}
 .sum{border-radius:30px;background:var(--c);padding:20px;display:flex;flex-direction:column;gap:8px;text-align:left;width:100%}
@@ -60,6 +60,12 @@ input:focus,textarea:focus{border-color:var(--ink)}
 .contact{display:flex;gap:8px;margin:14px 0 0}.cbtn{flex:1;min-height:50px;border-radius:18px;background:var(--soft);display:grid;place-items:center;font-weight:900;text-decoration:none;color:var(--ink)}
 .pvbar{position:sticky;top:0;z-index:10;margin:-18px -16px 12px;padding:calc(env(safe-area-inset-top) + 8px) 12px 8px 16px;background:#1B1B1F;color:#fff;display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:14px;font-weight:700}
 .pvbar button{min-height:40px;padding:0 14px;border-radius:14px;background:#fff;color:#1B1B1F;font-weight:900}
+.mine{display:flex;flex-direction:column;gap:8px;margin:12px 0 -4px}
+.mrow{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--card);border-radius:20px;padding:12px 12px 12px 16px}
+.mrow small{display:block;font-size:12px;color:var(--muted);font-weight:700}.mrow b{font-size:16px}
+.mrow button,.editbar button{min-height:42px;padding:0 16px;border-radius:14px;background:var(--ink);color:#fff;font-weight:900;flex:none}
+.editbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:12px 0 -4px;padding:10px 10px 10px 14px;border-radius:18px;background:#FFF1B8;font-size:14px}
+.editbar button{background:#fff;color:var(--ink)}
 .ok{width:64px;height:64px;border-radius:50%;background:#63D9B5;display:grid;place-items:center;margin:24px auto 0}
 </style>
 </head>
@@ -67,7 +73,6 @@ input:focus,textarea:focus{border-color:var(--ink)}
 <main id="m"><div class="center muted" style="padding-top:30vh">載入中…</div></main>
 <script type="module">
 /* 設定來源：config.js 或預約連結 # 後面帶的設定 */
-const SDK = (window.TONY_CONFIG && window.TONY_CONFIG.sdkBase) || 'https://www.gstatic.com/firebasejs/10.12.2/';
 function readConfig() {
   const c = window.TONY_CONFIG && window.TONY_CONFIG.firebase;
   if (c && c.apiKey && c.projectId) return c;
@@ -99,18 +104,59 @@ const CHECK = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" strok
 const ARROW = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>';
 const BACK = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>';
 const closed = () => { $('#m').innerHTML = pvBar() + '<div class="center" style="padding-top:26vh"><h1>線上預約尚未開放</h1><p class="muted">請直接聯絡設計師預約，謝謝！</p></div>'; };
+const randKey = () => { const a = new Uint8Array(18); crypto.getRandomValues(a); return Array.from(a, b => b.toString(36).padStart(2, '0')).join('').slice(0, 32); };
+
+/* ---------- Firestore REST（不載入 SDK：單次 HTTPS 請求，iPhone 上比較快也比較穩） ---------- */
+const API_ROOT = (window.TONY_CONFIG && window.TONY_CONFIG.restBase) || 'https://firestore.googleapis.com/v1';
+const BASE = FIREBASE_CONFIG ? `${API_ROOT}/projects/${encodeURIComponent(FIREBASE_CONFIG.projectId)}/databases/(default)/documents` : '';
+const KEY = FIREBASE_CONFIG ? 'key=' + encodeURIComponent(FIREBASE_CONFIG.apiKey) : '';
+const enc = v => v === null || v === undefined ? { nullValue: null }
+  : typeof v === 'string' ? { stringValue: v }
+  : typeof v === 'boolean' ? { booleanValue: v }
+  : typeof v === 'number' ? (Number.isInteger(v) ? { integerValue: String(v) } : { doubleValue: v })
+  : Array.isArray(v) ? { arrayValue: { values: v.map(enc) } }
+  : { mapValue: { fields: Object.fromEntries(Object.entries(v).map(([k, x]) => [k, enc(x)])) } };
+const dec = v => !v ? null : 'stringValue' in v ? v.stringValue : 'integerValue' in v ? Number(v.integerValue) : 'doubleValue' in v ? v.doubleValue
+  : 'booleanValue' in v ? v.booleanValue : 'arrayValue' in v ? (v.arrayValue.values || []).map(dec) : 'mapValue' in v ? decF(v.mapValue.fields) : null;
+const decF = f => Object.fromEntries(Object.entries(f || {}).map(([k, v]) => [k, dec(v)]));
+async function api(url, opt = {}, tries = 2) {
+  for (let i = 0; ; i++) {
+    const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 8000);
+    try {
+      const r = await fetch(url, { ...opt, signal: ctl.signal, ...(opt.body ? { headers: { 'Content-Type': 'application/json' } } : {}) });
+      clearTimeout(t);
+      if (r.status === 404) return null;
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) { const e = new Error((d.error && d.error.message) || ('HTTP ' + r.status)); e.code = r.status === 403 ? 'permission-denied' : 'http-' + r.status; throw e; }
+      return d;
+    } catch (e) {
+      clearTimeout(t);
+      if (e.code === 'permission-denied' || i >= tries - 1) throw e;
+      await new Promise(r => setTimeout(r, 400));
+    }
+  }
+}
+const getDoc = async path => { const d = await api(`${BASE}/${path}?${KEY}`); return d ? decF(d.fields) : null; };
+const addDoc = async (coll, data) => { const d = await api(`${BASE}/${coll}?${KEY}`, { method: 'POST', body: JSON.stringify({ fields: enc(data).mapValue.fields }) }, 1); return d.name.split('/').pop(); };
+const queryEq = async (coll, field, value) => {
+  const d = await api(`${BASE}:runQuery?${KEY}`, { method: 'POST', body: JSON.stringify({ structuredQuery: { from: [{ collectionId: coll }], where: { fieldFilter: { field: { fieldPath: field }, op: 'EQUAL', value: enc(value) } } } }) });
+  return (d || []).filter(x => x.document).map(x => decF(x.document.fields));
+};
+
+/* ---------- 我的預約（存在這支手機，用來修改） ---------- */
+const MINE = 'tony-mine';
+const loadMine = () => { try { return (JSON.parse(localStorage.getItem(MINE)) || []).filter(x => x && x.date >= ds(new Date())); } catch { return []; } };
+const saveMine = list => { try { localStorage.setItem(MINE, JSON.stringify(list.slice(-10))); } catch {} };
 
 if (!FIREBASE_CONFIG) closed();
-else start().catch(e => { $('#m').innerHTML = pvBar() + `<div class="center muted" style="padding-top:30vh">暫時無法載入，請稍後再試<br><small>${esc(e.code || e.message)}</small></div>`; });
+else start().catch(e => { $('#m').innerHTML = pvBar() + `<div class="center muted" style="padding-top:30vh">暫時無法載入，請稍後再試<br><small>${esc(e.code || e.message)}</small><br><br><button class="go center" style="max-width:240px;margin:auto" onclick="location.reload()">重新整理</button></div>`; });
 
 async function start() {
-  const [{ initializeApp }, F] = await Promise.all([import(SDK + 'firebase-app.js'), import(SDK + 'firebase-firestore.js')]);
-  const db = F.getFirestore(initializeApp(FIREBASE_CONFIG));
-  const snap = await F.getDoc(F.doc(db, 'public', 'info'));
-  if (!snap.exists() || !(snap.data().services || []).length) return closed();
-  const info = snap.data();
+  const [info, notifyDoc] = await Promise.all([getDoc('public/info'), getDoc('public/notify').catch(() => null)]);
+  if (!info || !(info.services || []).length) return closed();
+  const notifyUrl = (notifyDoc && notifyDoc.url) || info.notifyUrl || '';
   document.title = info.shopName + '｜線上預約';
-  const st = { step: 1, svc: [], date: null, start: null, busy: {}, name: '', phone: '', note: '', sending: false };
+  const st = { step: 1, svc: [], date: null, start: null, busy: {}, loading: {}, name: '', phone: '', note: '', sending: false, edit: null, done: null };
   try { const me = JSON.parse(localStorage.getItem('tony-cust')); if (me) { st.name = me.name || ''; st.phone = me.phone || ''; } } catch {}
   const svc = id => info.services.find(s => s.id === id);
   const chosen = () => st.svc.map(svc).filter(Boolean);
@@ -120,38 +166,44 @@ async function start() {
   const hoursOf = date => { if ((info.holidays || []).includes(date)) return null; const h = info.hours?.[parseDs(date).getDay()]; return h && h.open ? [toMin(h.start), toMin(h.end)] : null; };
   const t0 = new Date(), todayS = ds(t0), days = [];
   for (let i = 0; i < (info.bookAheadDays || 30); i++) days.push(ds(new Date(t0.getFullYear(), t0.getMonth(), t0.getDate() + i)));
+  const summary = x => `${dateLabel(x.date)} ${x.start} ${(x.svcNames || []).join('＋')}`;
 
   const head = () => `<div class="top">${st.step > 1 ? `<button class="back" data-a="back" aria-label="上一步">${BACK}</button>` : `<span class="shop" style="display:flex;align-items:center;gap:8px"><img src="icons/mark.png" alt="" width="30" height="30">${esc(info.shopName)}</span>`}
     <div class="dots" aria-label="第 ${st.step} 步，共 3 步">${[1, 2, 3].map(i => `<i class="${i < st.step ? 'on' : i === st.step ? 'cur' : ''}"></i>`).join('')}</div></div>`;
   const chips = () => `<div class="chosen">${chosen().map(s => `<span style="--c:${s.color || '#D7C3A8'}">${esc(s.name)}</span>`).join('')}<em>約 ${durText(dur())}・${money(price())}</em></div>`;
+  const editBar = () => st.edit ? `<div class="editbar"><span>正在修改：<b>${esc(st.edit.prevText)}</b></span><button data-a="canceledit">取消修改</button></div>` : '';
 
   function render() {
     let h = head();
     if (st.step === 1) {
-      h += `<h1>想做什麼？</h1><div class="tiles">${info.services.map(s => `<button class="tile ${st.svc.includes(s.id) ? 'on' : ''}" data-a="svc" data-id="${s.id}" style="--c:${s.color || '#D7C3A8'}" aria-pressed="${st.svc.includes(s.id)}">
+      const mine = st.edit ? [] : loadMine();
+      h += editBar() + (mine.length ? `<div class="mine">${mine.map((x, i) => `<div class="mrow"><span><small>你已預約</small><b class="num">${esc(summary(x))}</b></span><button data-a="edit" data-i="${i}">修改</button></div>`).join('')}</div>` : '')
+        + `<h1>${st.edit ? '要改成什麼？' : '想做什麼？'}</h1><div class="tiles">${info.services.map(s => `<button class="tile ${st.svc.includes(s.id) ? 'on' : ''}" data-a="svc" data-id="${s.id}" style="--c:${s.color || '#D7C3A8'}" aria-pressed="${st.svc.includes(s.id)}">
         <span class="ck">${CHECK}</span><b>${esc(s.name)}</b><span><span class="p num">${money(s.price)}</span><br><small>約 ${durText(s.duration)}</small></span></button>`).join('')}</div>
         <p class="note">可以選很多項</p>${contact()}<div class="grow"></div>
         <button class="go" data-a="next" ${st.svc.length ? '' : 'disabled'}><span style="text-align:left">${st.svc.length ? `<span class="num">${money(price())}</span><small>${durText(dur())}</small>` : '請選擇服務'}</span><span style="display:flex;align-items:center;gap:6px">選時間${ARROW}</span></button>`;
     } else if (st.step === 2) {
-      h += `<h1>哪天方便？</h1>${chips()}
+      h += editBar() + `<h1>哪天方便？</h1>${chips()}
         <div class="dates">${days.map(d => { const x = parseDs(d), open = hoursOf(d); return `<button class="date ${d === st.date ? 'on' : ''}" data-a="date" data-d="${d}" ${open ? '' : 'disabled'}><small>${open ? (d === todayS ? '今天' : '週' + WD[x.getDay()]) : '公休'}</small><b class="num">${x.getDate()}</b><small>${x.getMonth() + 1}月</small></button>`; }).join('')}</div>
         <h2>${st.date ? '還有這些時間' : '先選日期'}</h2><div id="slots">${slotsHtml()}</div>
         <div class="grow"></div>
         <button class="go" data-a="next" ${st.start != null ? '' : 'disabled'}><span class="num">${st.start != null ? dateLabel(st.date) + ' ' + toHM(st.start) : '請選擇時間'}</span><span style="display:flex;align-items:center;gap:6px">下一步${ARROW}</span></button>`;
     } else if (st.step === 3) {
-      h += `<h1>留個電話就好</h1>
+      h += editBar() + `<h1>${st.edit ? '確認修改' : '留個電話就好'}</h1>
         <button class="sum" data-a="back" style="--c:${color()}"><span class="when num">${dateLabel(st.date)} ${toHM(st.start)}</span><span class="tags">${chosen().map(s => `<span>${esc(s.name)}</span>`).join('')}<em style="font-style:normal;font-weight:700;font-size:14px">約 ${durText(dur())}・${money(price())}</em></span></button>
         <label><span>手機號碼</span><input id="phone" type="tel" inputmode="tel" autocomplete="tel" maxlength="15" class="num" value="${esc(st.phone)}"></label>
         <label><span style="color:var(--muted)">怎麼稱呼（選填）</span><input id="name" autocomplete="name" maxlength="30" placeholder="例如：王小姐" value="${esc(st.name)}" style="font-size:17px;height:56px"></label>
         <label><span style="color:var(--muted)">備註（選填）</span><textarea id="note" rows="2" maxlength="200" placeholder="例如：髮長、想要的造型">${esc(st.note)}</textarea></label>
-        <p class="note">送出後由設計師確認；若需要調整時間，會用這支電話聯絡你。</p>
+        <p class="note">${st.edit ? '送出後由設計師確認修改；確認前原本的預約仍然有效。' : '送出後由設計師確認；若需要調整時間，會用這支電話聯絡你。'}</p>
         <div class="err" id="err"></div><div class="grow"></div>
-        <button class="go center" data-a="send" ${st.sending ? 'disabled' : ''}>${st.sending ? '送出中…' : '送出預約'}</button>`;
+        <button class="go center" data-a="send" ${st.sending ? 'disabled' : ''}>${st.sending ? '送出中…' : st.edit ? '送出修改' : '送出預約'}</button>`;
     } else {
-      h = `<div class="ok">${CHECK.replace('width="16" height="16"', 'width="30" height="30"')}</div><h1 class="center">預約已送出</h1>
-        <p class="center muted" style="margin-top:-8px">設計師確認後會與你聯絡</p>
-        <div class="sum" style="--c:${color()};margin-top:10px"><span class="when num">${dateLabel(st.date)} ${toHM(st.start)}</span><span class="tags">${chosen().map(s => `<span>${esc(s.name)}</span>`).join('')}</span></div>
-        <p class="note center">${esc(info.shopName)}・如需更改請直接聯絡設計師</p>${contact()}
+      const x = st.done;
+      h = `<div class="ok">${CHECK.replace('width="16" height="16"', 'width="30" height="30"')}</div><h1 class="center">${x.edited ? '修改已送出' : '預約已送出'}</h1>
+        <p class="center muted" style="margin-top:-8px">${x.edited ? '設計師確認修改後會與你聯絡' : '設計師確認後會與你聯絡'}</p>
+        <div class="sum" style="--c:${x.color};margin-top:10px"><span class="when num">${dateLabel(x.date)} ${x.start}</span><span class="tags">${(x.svcNames || []).map(n => `<span>${esc(n)}</span>`).join('')}</span></div>
+        ${x.key ? `<button class="go center" data-a="editdone" style="margin-top:12px">修改這筆預約</button>` : `<p class="note center">如需更改請直接聯絡設計師</p>`}
+        ${contact()}
         <button class="go center" data-a="again" style="background:var(--soft);color:var(--ink)">再預約一筆</button>`;
     }
     $('#m').innerHTML = pvBar() + h;
@@ -164,56 +216,87 @@ async function start() {
     if (info.shopLine) b.push(`<a class="cbtn" href="${esc(lineUrl(info.shopLine))}" target="_blank" rel="noopener">LINE 聯絡</a>`);
     return (b.length ? `<div class="contact">${b.join('')}</div>` : '') + (info.shopAddress ? `<p class="note center">${esc(info.shopAddress)}</p>` : '');
   };
+  // 修改時，自己原本的時段不算佔用
+  const busyFor = date => {
+    let r = st.busy[date] || [];
+    if (st.edit && st.edit.prev.date === date) r = r.filter(x => !(x.s === st.edit.prev.s && x.e === st.edit.prev.e));
+    return r;
+  };
   function slotsHtml() {
     if (!st.date) return '';
-    if (!st.busy[st.date]) return '<p class="muted" style="margin:0 6px">查詢空檔中…</p>';
-    const h = hoursOf(st.date), d = dur(), busy = st.busy[st.date], step = info.slotStep || 30, out = [];
+    if (!st.busy[st.date]) return st.loading[st.date] === 'fail'
+      ? '<p class="muted" style="margin:0 6px">讀取失敗，<button data-a="retry" style="text-decoration:underline;font-weight:700">點這裡重試</button></p>'
+      : '<p class="muted" style="margin:0 6px">查詢空檔中…</p>';
+    const h = hoursOf(st.date), d = dur(), busy = busyFor(st.date), step = info.slotStep || 30, out = [];
     const now = st.date === todayS ? new Date().getHours() * 60 + new Date().getMinutes() + 30 : -1;
     if (h) for (let s = h[0]; s + d <= h[1]; s += step) { if (s < now) continue; if (busy.some(r => s < r.e && s + d > r.s)) continue; out.push(s); }
     return out.length ? `<div class="slots">${out.map(m => `<button class="slot num ${m === st.start ? 'on' : ''}" data-a="slot" data-m="${m}">${toHM(m)}</button>`).join('')}</div>` : '<p class="muted" style="margin:0 6px">這天已經約滿了，請選其他日期</p>';
   }
-  async function loadBusy(date) {
-    const r = [];
-    try { const s = await F.getDoc(F.doc(db, 'busy', date)); if (s.exists()) r.push(...(s.data().ranges || [])); } catch {}
-    try { const h = await F.getDocs(F.query(F.collection(db, 'holds'), F.where('date', '==', date))); h.docs.forEach(d => r.push({ s: d.data().s, e: d.data().e })); } catch {}
-    st.busy[date] = r;
+  // 讀取某天已佔用的時段；同一天同時只發一次請求，完成後若畫面還停在這天就更新
+  function loadBusy(date, force) {
+    if (!force && (st.busy[date] || st.loading[date] instanceof Promise)) return st.loading[date] || Promise.resolve();
+    const p = (async () => {
+      const [b, holds] = await Promise.all([getDoc('busy/' + date), queryEq('holds', 'date', date)]);
+      st.busy[date] = [...((b && b.ranges) || []), ...holds.map(x => ({ s: x.s, e: x.e }))];
+      st.loading[date] = 'ok';
+    })().catch(() => { if (!st.busy[date]) st.loading[date] = 'fail'; })
+      .finally(() => { if (st.step === 2 && st.date === date && !st.sending) render(); });
+    st.loading[date] = p;
+    return p;
+  }
+  const prefetch = () => days.filter(hoursOf).slice(0, 7).forEach(d => loadBusy(d));
+  function startEdit(x) {
+    st.edit = { root: x.root, key: x.key, prevText: summary(x), prev: { date: x.date, s: toMin(x.start), e: toMin(x.start) + x.duration } };
+    Object.assign(st, { step: 1, svc: (x.svc || []).filter(svc), date: x.date, start: toMin(x.start), name: x.name || st.name, phone: x.phone || st.phone, note: x.note || '', sending: false, busy: {}, loading: {} });
+    window.scrollTo(0, 0); render();
   }
   $('#m').onclick = async e => {
     const t = e.target.closest('[data-a]'); if (!t || t.disabled) return;
     const a = t.dataset.a;
     if (a === 'svc') { const id = t.dataset.id; st.svc = st.svc.includes(id) ? st.svc.filter(x => x !== id) : [...st.svc, id]; st.start = null; render(); }
-    if (a === 'next') { st.step++; window.scrollTo(0, 0); render(); }
-    if (a === 'again') { Object.assign(st, { step: 1, svc: [], date: null, start: null, busy: {}, note: '', sending: false }); render(); }
+    if (a === 'next') { st.step++; window.scrollTo(0, 0); render(); if (st.step === 2) { prefetch(); if (st.date) loadBusy(st.date); } }
+    if (a === 'again') { Object.assign(st, { step: 1, svc: [], date: null, start: null, busy: {}, loading: {}, note: '', sending: false, edit: null, done: null }); render(); }
     if (a === 'back') { st.step = Math.max(1, st.step - 1); render(); }
     if (a === 'slot') { st.start = +t.dataset.m; render(); }
-    if (a === 'date') {
-      st.date = t.dataset.d; st.start = null; render();
-      if (!st.busy[st.date]) {
-        await loadBusy(st.date);
-        render();
-      }
-    }
+    if (a === 'date') { st.date = t.dataset.d; st.start = null; render(); loadBusy(st.date); }
+    if (a === 'retry') { loadBusy(st.date, true); render(); }
+    if (a === 'edit') { const x = loadMine()[+t.dataset.i]; if (x) startEdit(x); }
+    if (a === 'editdone') { const x = loadMine().find(m => m.root === st.done.root); if (x) startEdit(x); }
+    if (a === 'canceledit') { Object.assign(st, { step: 1, svc: [], date: null, start: null, note: '', edit: null }); render(); }
     if (a === 'send') {
       const phone = st.phone.trim();
       if (!/^[0-9+\-\s()]{8,15}$/.test(phone)) { $('#err').textContent = '請輸入正確的手機號碼'; $('#phone').focus(); return; }
       st.sending = true; render();
       try {
-        await loadBusy(st.date);
+        await loadBusy(st.date, true);
         const s0 = st.start, e0 = st.start + dur();
-        if (st.busy[st.date].some(r => s0 < r.e && e0 > r.s)) {
+        if (busyFor(st.date).some(r => s0 < r.e && e0 > r.s)) {
           st.sending = false; st.start = null; st.step = 2; render();
           alert('不好意思，這個時段剛剛被預約走了，請再選一個時間。'); return;
         }
-        const hold = await F.addDoc(F.collection(db, 'holds'), { date: st.date, s: s0, e: e0, createdAt: Date.now() });
-        const reqRef = await F.addDoc(F.collection(db, 'requests'), { date: st.date, start: toHM(st.start), duration: dur(), price: price(),
+        const holdId = await addDoc('holds', { date: st.date, s: s0, e: e0, createdAt: Date.now() });
+        const key = st.edit ? st.edit.key : randKey();
+        const base = { date: st.date, start: toHM(st.start), duration: dur(), price: price(),
           services: chosen().map(s => ({ id: s.id, name: s.name, duration: s.duration, price: s.price, color: s.color || '' })),
-          name: st.name.trim(), phone, note: st.note.trim(), status: 'pending', createdAt: Date.now(), holdId: hold.id });
+          name: st.name.trim(), phone, note: st.note.trim(), status: 'pending', createdAt: Date.now(), holdId };
+        const extra = st.edit ? { editKey: key, editOf: st.edit.root, prevText: st.edit.prevText.slice(0, 80) } : { editKey: key };
+        let id, editable = true;
+        try { id = await addDoc('requests', { ...base, ...extra }); }
+        catch (err) {
+          if (err.code !== 'permission-denied') throw err;
+          // 資料庫規則還是舊版：改用舊格式送出（無法再修改），修改內容寫在備註
+          editable = false;
+          id = await addDoc('requests', { ...base, note: (st.edit ? `【修改】原本 ${st.edit.prevText}。` : '') + base.note });
+        }
         try { localStorage.setItem('tony-cust', JSON.stringify({ name: st.name.trim(), phone })); } catch {}
-        let nurl = info.notifyUrl || '';
-        try { const ns = await F.getDoc(F.doc(db, 'public', 'notify')); if (ns.exists() && ns.data().url) nurl = ns.data().url; } catch {}
-        if (/^https:\/\//.test(nurl)) fetch(nurl.replace(/\/+$/, '') + '/new', { method: 'POST', body: JSON.stringify({ id: reqRef.id }), headers: { 'Content-Type': 'text/plain' }, keepalive: true }).catch(() => {});
-        st.step = 4; window.scrollTo(0, 0); render();
-      } catch { st.sending = false; render(); $('#err').textContent = '送出失敗，請稍後再試或直接聯絡設計師'; }
+        const root = st.edit ? st.edit.root : id;
+        const rec = { root, last: id, key: editable ? key : '', date: st.date, start: toHM(st.start), duration: dur(), svc: [...st.svc], svcNames: chosen().map(s => s.name), name: st.name.trim(), phone, note: st.note.trim(), at: Date.now() };
+        saveMine([...loadMine().filter(m => m.root !== root), ...(editable ? [rec] : [])]);
+        if (/^https:\/\//.test(notifyUrl)) fetch(notifyUrl.replace(/\/+$/, '') + '/new', { method: 'POST', body: JSON.stringify({ id }), headers: { 'Content-Type': 'text/plain' }, keepalive: true }).catch(() => {});
+        st.done = { ...rec, color: color(), edited: !!st.edit };
+        Object.assign(st, { step: 4, sending: false, edit: null, busy: {}, loading: {} });
+        window.scrollTo(0, 0); render();
+      } catch { st.sending = false; render(); $('#err').textContent = '送出失敗，請檢查網路後再按一次，或直接聯絡設計師'; }
     }
   };
   render();
