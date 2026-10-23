@@ -87,11 +87,13 @@ async function shopName(env) { try { const s = await fsGet(env, 'settings/main')
 /* ---------- 發送 ---------- */
 async function sendLine(env, text) {
   const ids = String(env.LINE_USER_ID || '').split(',').map(s => s.trim()).filter(Boolean);
-  if (!env.LINE_CHANNEL_TOKEN || !ids.length) return 'skipped';
+  const token = String(env.LINE_CHANNEL_TOKEN || '').trim();
+  if (!token || !ids.length) return 'skipped';
+  if (/^[0-9a-f]{32}$/i.test(token)) throw new Error('LINE_CHANNEL_TOKEN 填成了 Channel secret（32 碼那個）。請改填 Messaging API 分頁最下面、按「發行」產生的 Channel access token（很長一串，約 170 字）。');
   const msg = [{ type: 'text', text: text.slice(0, 4900) }];
   const r = ids.length === 1
-    ? await fetch('https://api.line.me/v2/bot/message/push', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + env.LINE_CHANNEL_TOKEN }, body: JSON.stringify({ to: ids[0], messages: msg }) })
-    : await fetch('https://api.line.me/v2/bot/message/multicast', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + env.LINE_CHANNEL_TOKEN }, body: JSON.stringify({ to: ids, messages: msg }) });
+    ? await fetch('https://api.line.me/v2/bot/message/push', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token }, body: JSON.stringify({ to: ids[0], messages: msg }) })
+    : await fetch('https://api.line.me/v2/bot/message/multicast', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token }, body: JSON.stringify({ to: ids, messages: msg }) });
   if (!r.ok) { let m = ''; try { m = (await r.json()).message; } catch {} throw new Error('LINE 傳送失敗：' + (m || r.status)); }
   return 'ok';
 }
@@ -193,7 +195,7 @@ async function handleLineTest(env) {
     return page(true, '打開 LINE 看看官方帳號有沒有傳來「LINE 測試成功」。<br><br>沒收到的話：確認你已經用手機<b>加這個官方帳號為好友</b>，以及 LINE_USER_ID 是 U 開頭那一串。');
   } catch (e) {
     const m = String(e.message || e);
-    const hint = /401|Authentication|token/i.test(m) ? 'Channel access token 不對，請到 LINE Developers 重新 Issue 並複製完整一串。'
+    const hint = /Channel secret/.test(m) ? '' : /401|Authentication|token/i.test(m) ? 'Channel access token 不對，請到 LINE Developers 重新 Issue 並複製完整一串。'
       : /400|to|user/i.test(m) ? 'LINE_USER_ID 不對，請複製 Basic settings 最下面「Your user ID」（U 開頭）。' : '';
     return page(false, '傳送失敗：' + m + (hint ? '<br><br>' + hint : ''));
   }
