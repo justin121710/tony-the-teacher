@@ -6,6 +6,8 @@
  *  - POST /test   設計師在 APP 按「傳送測試通知」→ 檢查所有設定並發一則測試訊息
  *  - POST /line   LINE Webhook：有人傳「ID」給官方帳號，回覆他的 LINE User ID
  *  - 排程         每天早上把今天的行程傳 LINE（Cloudflare Cron："0 1 * * *" = 台灣 09:00）
+ *  - GET  /line-test  只測試 LINE：只需 LINE_CHANNEL_TOKEN、LINE_USER_ID 兩個密碼；
+ *                     為防止被亂用，等 OWNER_EMAIL 設定好（正式啟用）後這個網址就自動關閉
  *
  * 需要在 Cloudflare → Worker → 設定 → 變數和密碼 加入（類型選「密碼」）：
  *  FIREBASE_API_KEY      Firebase 設定裡的 apiKey
@@ -180,6 +182,22 @@ async function handleLine(req, env) {
   }
   return new Response('ok');
 }
+async function handleLineTest(env) {
+  const page = (ok, msg) => new Response(`<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>LINE 測試</title>
+<body style="font:18px/1.6 -apple-system,'PingFang TC',sans-serif;background:#FFF7EE;color:#1B1B1F;padding:32px 20px;max-width:480px;margin:auto">
+<h1 style="font-size:26px">${ok ? '✅ 已送出' : '⚠️ 還沒成功'}</h1><p>${msg}</p></body>`, { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+  if (env.OWNER_EMAIL) return page(false, '正式設定已完成，這個測試網址已關閉。請改用 APP 裡的「傳送測試通知」。');
+  if (!env.LINE_CHANNEL_TOKEN || !env.LINE_USER_ID) return page(false, '還缺密碼：' + ['LINE_CHANNEL_TOKEN', 'LINE_USER_ID'].filter(k => !env[k]).join('、') + '。<br>到 Cloudflare → 這個 Worker → 設定 → 變數和密碼 新增後，再重新整理這一頁。');
+  try {
+    await sendLine(env, '【Tony老師】LINE 測試成功！\n\n收到這則訊息，代表 LINE 官方帳號和通知服務已經接通。');
+    return page(true, '打開 LINE 看看官方帳號有沒有傳來「LINE 測試成功」。<br><br>沒收到的話：確認你已經用手機<b>加這個官方帳號為好友</b>，以及 LINE_USER_ID 是 U 開頭那一串。');
+  } catch (e) {
+    const m = String(e.message || e);
+    const hint = /401|Authentication|token/i.test(m) ? 'Channel access token 不對，請到 LINE Developers 重新 Issue 並複製完整一串。'
+      : /400|to|user/i.test(m) ? 'LINE_USER_ID 不對，請複製 Basic settings 最下面「Your user ID」（U 開頭）。' : '';
+    return page(false, '傳送失敗：' + m + (hint ? '<br><br>' + hint : ''));
+  }
+}
 async function dailySummary(env) {
   if (String(env.DAILY_SUMMARY || '').toLowerCase() === 'off') return { skipped: true };
   const day = taipeiToday();
@@ -197,6 +215,7 @@ export default {
       if (req.method === 'POST' && path === '/new') return await handleNew(req, env);
       if (req.method === 'POST' && path === '/test') return await handleTest(req, env);
       if (req.method === 'POST' && path === '/line') return await handleLine(req, env);
+      if (req.method === 'GET' && path === '/line-test') return await handleLineTest(env);
       if (req.method === 'GET' && (path === '' || path === '/')) return json({ ok: true, service: 'Tony老師 通知服務' });
       return json({ ok: false, error: 'not found' }, 404);
     } catch (e) {
