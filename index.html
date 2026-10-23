@@ -367,6 +367,8 @@ async function cloudBackend() {
     F.setDoc(F.doc(db, 'public', 'info'), clean({ shopName: st.shopName, shopPhone: st.shopPhone || '', shopLine: st.shopLine || '', shopAddress: st.shopAddress || '', notifyUrl: st.notifyUrl || '',
       slotStep: st.slotStep, bookAheadDays: st.bookAheadDays, holidays: st.holidays, hours: st.hours,
       services: activeServices().map(s => ({ id: s.id, name: s.name, duration: s.duration, price: s.price, color: s.color || '' })) })).catch(fail);
+    // 通知網址另外存一份：舊版 APP 改寫 public/info 時不會把它洗掉
+    F.setDoc(F.doc(db, 'public', 'notify'), { url: (st.notifyUrl || '').trim() }).catch(fail);
   }, 800); };
   const after = (coll, dates) => { if (coll === 'bookings' || coll === 'requests') new Set(dates.filter(Boolean)).forEach(syncBusy); if (coll === 'services') syncPublic(); };
   async function seed() {

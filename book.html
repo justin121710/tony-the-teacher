@@ -209,7 +209,9 @@ async function start() {
           services: chosen().map(s => ({ id: s.id, name: s.name, duration: s.duration, price: s.price, color: s.color || '' })),
           name: st.name.trim(), phone, note: st.note.trim(), status: 'pending', createdAt: Date.now(), holdId: hold.id });
         try { localStorage.setItem('tony-cust', JSON.stringify({ name: st.name.trim(), phone })); } catch {}
-        if (/^https:\/\//.test(info.notifyUrl || '')) fetch(info.notifyUrl.replace(/\/+$/, '') + '/new', { method: 'POST', body: JSON.stringify({ id: reqRef.id }), headers: { 'Content-Type': 'text/plain' }, keepalive: true }).catch(() => {});
+        let nurl = info.notifyUrl || '';
+        try { const ns = await F.getDoc(F.doc(db, 'public', 'notify')); if (ns.exists() && ns.data().url) nurl = ns.data().url; } catch {}
+        if (/^https:\/\//.test(nurl)) fetch(nurl.replace(/\/+$/, '') + '/new', { method: 'POST', body: JSON.stringify({ id: reqRef.id }), headers: { 'Content-Type': 'text/plain' }, keepalive: true }).catch(() => {});
         st.step = 4; window.scrollTo(0, 0); render();
       } catch { st.sending = false; render(); $('#err').textContent = '送出失敗，請稍後再試或直接聯絡設計師'; }
     }
