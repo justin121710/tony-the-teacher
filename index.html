@@ -73,7 +73,9 @@ nav.tabs .tb{display:flex;flex-direction:column;align-items:center;justify-conte
 nav.tabs .tb.on{color:var(--ink)}
 nav.tabs .plus{width:64px;height:64px;border-radius:22px;background:var(--ink);color:#fff;display:grid;place-items:center;box-shadow:0 8px 20px rgba(27,27,31,.22)}
 .layer{position:fixed;inset:0;z-index:40;display:none}.layer.open{display:block}
-#alert-root{z-index:60}
+#alert-root{z-index:60}#confirm-root{z-index:70}
+.ask-m{font-size:18px;font-weight:900;line-height:1.5;margin:18px 6px 18px;white-space:pre-line}
+body.desk #confirm-root .sheet{max-width:420px}
 .bg{position:absolute;inset:0;background:rgba(40,30,22,.55);animation:fd .2s}
 .sheet{position:absolute;left:0;right:0;bottom:0;max-width:520px;margin:0 auto;max-height:94vh;max-height:94dvh;background:var(--bg);border-radius:32px 32px 0 0;display:flex;flex-direction:column;animation:up .25s cubic-bezier(.2,.8,.2,1)}
 .grab{display:flex;justify-content:center;padding:12px 0 0}.grab span{width:40px;height:5px;border-radius:3px;background:var(--dash)}
@@ -173,20 +175,22 @@ body.desk .sbody{padding:14px 20px 24px}
 .dk-now .btn:not(.ink){background:#fff}
 .mini{background:var(--card);border-radius:20px;padding:10px 8px;flex:none}
 .mini-hd{display:flex;align-items:center;justify-content:space-between;font-weight:900;font-size:14px;margin:0 2px 4px}
-.mini-hd button{width:32px;height:32px;border-radius:10px;font-size:18px;text-align:center}
+.mini-hd button{width:32px;height:32px;border-radius:10px;display:grid;place-items:center}
 .mini-hd button:hover{background:var(--soft)}
-.mini-r{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));align-items:center;justify-items:center;height:38px;padding-bottom:4px;border-radius:12px;border:1.5px solid transparent;margin-top:2px}
+.mini-r{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));align-items:center;justify-items:center;height:46px;border-radius:14px;border:1.5px solid transparent;margin-top:2px}
 .mini-r.wk{background:var(--soft);border-color:var(--dash)}
 .mini-r.wd{height:22px;margin:0}
 .mini-r.wd span{font-size:11px;color:var(--muted);font-weight:700}
-.md{width:28px;height:28px;flex:none;padding:0;border-radius:50%;display:grid;place-items:center;font-size:13px;font-weight:700;line-height:1;position:relative;font-variant-numeric:tabular-nums;text-align:center}
+.md{width:30px;height:38px;padding:7px 0 0;border-radius:10px;display:flex;flex-direction:column;align-items:center;font-size:13px;font-weight:700;line-height:1.1;position:relative;font-variant-numeric:tabular-nums}
 button.md:hover{background:rgba(27,27,31,.08)}
 .md.off{color:#B5ADA5}
 .md.hol{color:var(--red)}
 .md.vis{box-shadow:inset 0 0 0 1.5px var(--ink)}
 .md.td,.md.td:hover{background:var(--ink);color:#fff}
-.md.dot::after{content:"";position:absolute;left:50%;bottom:-6px;width:4px;height:4px;margin-left:-2px;border-radius:50%;background:var(--ink)}
+.md.dot::after{content:"";position:absolute;left:50%;bottom:7px;width:5px;height:5px;margin-left:-2.5px;border-radius:50%;background:var(--ink)}
+.md.td.dot::after{background:#fff}
 .cal-dh.hol small,.cal-dh.hol:not(.today) b{color:var(--red)}
+.cal-dh.today.hol small{color:#FFA394}
 .dk-main{min-width:0;padding:0 24px 40px}
 .dk-page{max-width:760px;margin:0 auto;padding-top:20px}
 .dk-top{position:sticky;top:0;z-index:6;background:var(--bg);padding-top:16px}
@@ -199,11 +203,11 @@ button.md:hover{background:rgba(27,27,31,.08)}
 .dk-seg button.on{background:var(--ink);color:#fff}
 .cal-head,.cal-body{display:grid;grid-template-columns:56px repeat(var(--cols),minmax(0,1fr))}
 .cal-head{padding-bottom:6px}
-.cal-dh{padding:4px 2px 6px;border-radius:14px;display:flex;flex-direction:column;align-items:center;line-height:1.2;min-width:0}
+.cal-dh{padding:5px 2px 7px;margin:0 3px;border-radius:14px;display:flex;flex-direction:column;align-items:center;line-height:1.2;min-width:0}
 .cal-dh:hover{background:var(--soft)}
 .cal-dh small{font-size:12px;color:var(--muted);font-weight:700}
 .cal-dh b{font-size:21px;font-weight:800;width:38px;height:38px;display:grid;place-items:center;border-radius:50%}
-.cal-dh.today b{background:var(--ink);color:#fff}
+.cal-dh.today,.cal-dh.today:hover{background:var(--ink);color:#fff}.cal-dh.today small,.cal-dh.today em{color:rgba(255,255,255,.75)}
 .cal-dh em{font-style:normal;font-size:11.5px;color:var(--muted);font-weight:700;min-height:15px;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .cal-body{background:var(--card);border-radius:20px;overflow:hidden}
 .cal-times{position:relative}
@@ -225,7 +229,7 @@ button.md:hover{background:rgba(27,27,31,.08)}
 .ev.past{opacity:.5}
 .cal-now{position:absolute;left:-1px;right:0;height:2px;background:var(--red);z-index:2;pointer-events:none}
 .cal-now::before{content:"";position:absolute;left:-1px;top:-4px;width:10px;height:10px;border-radius:50%;background:var(--red)}
-@media (max-width:1100px){.mini{padding:10px 4px}.md{width:24px;height:24px;font-size:12px}.dk{grid-template-columns:208px minmax(0,1fr)}.dk-main{padding:0 14px 32px}}
+@media (max-width:1100px){.mini{padding:10px 4px}.md{width:25px;height:36px;font-size:12px}.dk{grid-template-columns:208px minmax(0,1fr)}.dk-main{padding:0 14px 32px}}
 </style>
 </head>
 <body>
@@ -237,6 +241,7 @@ button.md:hover{background:rgba(27,27,31,.08)}
 </div></nav>
 <div class="layer" id="sheet-root"></div>
 <div class="layer" id="alert-root"></div>
+<div class="layer" id="confirm-root"></div>
 <div id="toast" role="status"></div>
 <input type="file" id="import-file" accept="application/json,.json" class="hidden">
 
@@ -374,7 +379,9 @@ const ICON = {
   check: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
   clock: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
   bell: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16V11a6 6 0 0112 0v5l1.5 2h-15zM10 20.5a2 2 0 004 0"/></svg>',
-  x: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>'
+  x: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+  prev: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>',
+  next: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>'
 };
 let toastT;
 function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2400); }
@@ -383,7 +390,7 @@ const clean = o => JSON.parse(JSON.stringify(o));
 
 /* ---------- 預設資料 ---------- */
 const DEFAULT_SETTINGS = {
-  shopName: '我的髮型工作室', slotStep: 30, bookAheadDays: 30, holidays: [], alerts: true, keepAwake: true,
+  shopName: '我的髮型工作室', weekStart: 0, slotStep: 30, bookAheadDays: 30, holidays: [], alerts: true, keepAwake: true,
   hours: {
     0: { open: true, start: '10:00', end: '19:00' }, 1: { open: false, start: '10:00', end: '20:00' },
     2: { open: true, start: '10:00', end: '20:00' }, 3: { open: true, start: '10:00', end: '20:00' },
@@ -493,9 +500,9 @@ async function cloudBackend() {
     let d = null; try { d = JSON.parse(localStorage.getItem(LS_LOCAL)); } catch {}
     if (!d || !(d.bookings || []).length || localStorage.getItem('tony-migrated') || S.bookings.length) return;
     localStorage.setItem('tony-migrated', '1');
-    if (confirm(`這支手機有單機版的 ${d.bookings.length} 筆預約、${(d.customers || []).length} 位客人，要上傳到雲端嗎？`)) {
-      this.replaceAll(d).then(() => toast('上傳完成'), fail);
-    }
+    ask(`這支手機有單機版的 ${d.bookings.length} 筆預約、${(d.customers || []).length} 位客人，要上傳到雲端嗎？`, '上傳').then(ok => {
+      if (ok) this.replaceAll(d).then(() => toast('上傳完成'), fail);
+    });
   }
   function subscribe() {
     let seeded = false, first = true, bkInit = false;
@@ -657,7 +664,7 @@ function showLogin() {
     const em = $('#l-email').value.trim(); if (!em) { $('#l-err').textContent = '請先輸入 Email'; return; }
     try { await backend.resetPw(em); $('#l-err').textContent = '已寄出重設密碼信，請收信'; } catch { $('#l-err').textContent = '寄送失敗，請確認 Email'; }
   };
-  const off = $('#l-off'); if (off) off.onclick = () => { if (confirm('改回單機版？（雲端資料不會被刪除）')) { localStorage.removeItem(LS_FB); location.reload(); } };
+  const off = $('#l-off'); if (off) off.onclick = async () => { if (await ask('改回單機版？（雲端資料不會被刪除）')) { localStorage.removeItem(LS_FB); location.reload(); } };
 }
 function showRulesHelp(auto) {
   const email = backend.email ? backend.email() : '';
@@ -688,6 +695,21 @@ function cloudSetup() {
   });
 }
 const sheetOpen = () => $('#sheet-root').classList.contains('open');
+// 確認視窗（取代瀏覽器的 confirm）：電腦上出現在畫面正中間、後方反灰
+function ask(msg, okText = '確定') {
+  return new Promise(res => {
+    const root = $('#confirm-root');
+    root.innerHTML = `<div class="bg"></div><div class="sheet" role="alertdialog" aria-modal="true"><div class="grab"><span></span></div><div class="sbody"><p class="ask-m">${esc(msg)}</p>
+      <div class="acts c2"><button class="btn" data-k="0">取消</button><button class="btn ink" data-k="1">${esc(okText)}</button></div></div></div>`;
+    root.classList.add('open');
+    const key = e => { if (e.key === 'Escape' || e.key === 'Enter') { e.preventDefault(); e.stopImmediatePropagation(); done(e.key === 'Enter'); } };
+    const done = v => { document.removeEventListener('keydown', key, true); root.classList.remove('open'); root.innerHTML = ''; res(v); };
+    document.addEventListener('keydown', key, true);
+    root.querySelector('.bg').onclick = () => done(false);
+    root.querySelectorAll('[data-k]').forEach(b => { b.onclick = () => done(b.dataset.k === '1'); });
+    root.querySelector('[data-k="1"]').focus();
+  });
+}
 
 function render() {
   if (!S.settings) { if (backend?.mode === 'cloud' && $('#login')) return; $('#app').innerHTML = '<div class="empty">載入中…</div>'; return; }
@@ -709,9 +731,9 @@ window.addEventListener('unhandledrejection', e => { const r = e.reason; if (r &
 /* ---------- 行程頁 ---------- */
 function viewDay() {
   const d = U.date, isT = d === today(), dt = parseDs(d), n = nowMin(), step = S.settings.slotStep || 30;
-  let h = `<div class="hd"><button class="ib" data-act="day" data-n="-1" aria-label="前一天">‹</button>
+  let h = `<div class="hd"><button class="ib" data-act="day" data-n="-1" aria-label="前一天">${ICON.prev}</button>
     <h1>${isT ? '今天' : '週' + WD[dt.getDay()]} <span class="num">${dt.getMonth() + 1}/${dt.getDate()}</span><span class="caret" aria-hidden="true">▾</span><input type="date" data-chg="jump" value="${d}" aria-label="選擇日期"></h1>
-    <button class="ib" data-act="day" data-n="1" aria-label="後一天">›</button>
+    <button class="ib" data-act="day" data-n="1" aria-label="後一天">${ICON.next}</button>
     ${isT ? `<span class="clock num" id="clock">${toHM(n)}</span>` : '<button class="pill" data-act="today" style="margin-left:auto">回今天</button>'}</div>`;
   if (S.settings.alerts !== false && !audioOK) h += `<button class="banner soft" data-act="unlock"><span>點一下，開啟超時提醒聲音</span>${ICON.bell}</button>`;
   if (S.requests.length) h += `<button class="banner" data-act="reqs"><span>${S.requests.some(q => q.editOf) ? '線上預約／修改待確認' : '線上預約待確認'}</span><b class="num">${S.requests.length}</b></button>`;
@@ -792,8 +814,10 @@ try { wideMQ.addEventListener('change', () => render()); } catch {}
 U.cal = lsGet(LS_CAL, innerWidth >= 1000 ? 'week' : '3');
 const CAL_PX = 1.2;   // 每分鐘幾像素（一小時 72px）
 const CAL_STEP = { day: 1, 3: 3, week: 7 };
+const weekStart = () => +(S.settings?.weekStart ?? 0);   // 0＝週日、1＝週一
+const weekOf = d => addDays(d, -((parseDs(d).getDay() - weekStart() + 7) % 7));
 function calDays() {
-  if (U.cal === 'week') { const off = (parseDs(U.date).getDay() + 6) % 7, mon = addDays(U.date, -off); return [0, 1, 2, 3, 4, 5, 6].map(i => addDays(mon, i)); }
+  if (U.cal === 'week') { const st = weekOf(U.date); return [0, 1, 2, 3, 4, 5, 6].map(i => addDays(st, i)); }
   return Array.from({ length: CAL_STEP[U.cal] || 1 }, (_, i) => addDays(U.date, i));
 }
 const NAV_ICON = {
@@ -860,10 +884,10 @@ function holidaysOf(y) {
 const holiday = d => holidaysOf(+d.slice(0, 4))[d] || '';
 function miniCal() {
   const m = U.mini || U.date.slice(0, 7), [y, mo] = m.split('-').map(Number), t = today();
-  const off = (new Date(y, mo - 1, 1).getDay() + 6) % 7, n = new Date(y, mo, 0).getDate();
+  const off = (new Date(y, mo - 1, 1).getDay() - weekStart() + 7) % 7, n = new Date(y, mo, 0).getDate();
   const has = new Set([...S.bookings.filter(b => b.status !== 'cancelled'), ...S.requests].map(x => x.date).filter(d => d && d.startsWith(m)));
   const onCal = U.tab === 'day', vis = onCal && U.cal !== 'week' ? new Set(calDays()) : new Set();
-  const wkStart = addDays(U.date, -((parseDs(U.date).getDay() + 6) % 7));   // 目前這週的週一
+  const wkStart = weekOf(U.date);   // 目前這週的第一天
   let rows = '';
   for (let r = 0; r * 7 < off + n; r++) {
     let cells = '', inWk = false;
@@ -876,8 +900,8 @@ function miniCal() {
     }
     rows += `<div class="mini-r ${onCal && inWk ? 'wk' : ''}">${cells}</div>`;
   }
-  return `<div class="mini"><div class="mini-hd"><button data-act="mini" data-n="-1" aria-label="上個月">‹</button><b>${y} 年 ${mo} 月</b><button data-act="mini" data-n="1" aria-label="下個月">›</button></div>
-    <div class="mini-r wd">${[...'一二三四五六日'].map(w => `<span>${w}</span>`).join('')}</div>${rows}</div>`;
+  return `<div class="mini"><div class="mini-hd"><button data-act="mini" data-n="-1" aria-label="上個月">${ICON.prev}</button><b>${y} 年 ${mo} 月</b><button data-act="mini" data-n="1" aria-label="下個月">${ICON.next}</button></div>
+    <div class="mini-r wd">${[...(weekStart() ? '一二三四五六日' : '日一二三四五六')].map(w => `<span>${w}</span>`).join('')}</div>${rows}</div>`;
 }
 // 同一時間重疊的預約並排顯示
 function lanes(list) {
@@ -905,7 +929,7 @@ function viewCal() {
   const P = m => (m - lo) * CAL_PX;
   const title = first.getMonth() === last.getMonth() ? `${first.getFullYear()} 年 ${first.getMonth() + 1} 月` : `${first.getMonth() + 1} 月 – ${last.getMonth() + 1} 月`;
   const seg = [['day', '日'], ['3', '3 日'], ['week', '週']].map(([k, l]) => `<button class="${U.cal === k ? 'on' : ''}" data-act="calv" data-v="${k}">${l}</button>`).join('');
-  let top = `<div class="hd dk-bar"><button class="ib" data-act="cal" data-n="-1" aria-label="往前">‹</button><button class="ib" data-act="cal" data-n="1" aria-label="往後">›</button>
+  let top = `<div class="hd dk-bar"><button class="ib" data-act="cal" data-n="-1" aria-label="往前">${ICON.prev}</button><button class="ib" data-act="cal" data-n="1" aria-label="往後">${ICON.next}</button>
     <h1>${days.length === 1 ? `${dayWord(U.date)}${U.date === t ? ' <span class="num">' + dateLabel(U.date) + '</span>' : ''}` : title}<span class="caret" aria-hidden="true">▾</span><input type="date" data-chg="jump" value="${U.date}" aria-label="選擇日期"></h1>
     <button class="pill" data-act="today">今天</button><div class="dk-seg">${seg}</div>
     ${days.includes(t) ? `<span class="clock num" id="clock">${toHM(n)}</span>` : ''}</div>`;
@@ -984,7 +1008,7 @@ function viewIncome() {
   done.forEach(b => (b.services || []).forEach(s => { const k = s.name; (by[k] ||= { n: 0, r: 0, c: S.services.find(x => x.id === s.id)?.color || s.color || PALETTE[7] }); by[k].n++; by[k].r += s.price || 0; }));
   const rows = Object.entries(by).sort((a, b) => b[1].r - a[1].r);
   const tot = Math.max(1, rows.reduce((a, [, v]) => a + v.r, 0));
-  return `<div class="hd"><button class="ib" data-act="mon" data-n="-1" aria-label="上個月">‹</button><h1 style="flex:1;text-align:center">${y} 年 ${mo} 月</h1><button class="ib" data-act="mon" data-n="1" aria-label="下個月">›</button></div>
+  return `<div class="hd"><button class="ib" data-act="mon" data-n="-1" aria-label="上個月">${ICON.prev}</button><h1 style="flex:1;text-align:center">${y} 年 ${mo} 月</h1><button class="ib" data-act="mon" data-n="1" aria-label="下個月">${ICON.next}</button></div>
     <div class="total"><small style="font-weight:700">已收</small><span class="v num">${money(rev)}</span><small>完成 ${done.length} 組・還有 ${money(sum(booked))} 預約中</small>
       ${rows.length ? `<div class="stack">${rows.map(([, v]) => `<i style="--c:${v.c};flex:${v.r}"></i>`).join('')}</div>` : ''}</div>
     ${rows.length ? `<div class="grid2">${rows.map(([k, v]) => `<div class="stile" style="--c:${v.c}"><span>${esc(k)}</span><b class="num">${money(v.r)}</b><span style="font-weight:500">${v.n} 次・${Math.round(v.r / tot * 100)}%</span></div>`).join('')}</div>` : '<div class="empty">這個月還沒有完成的預約</div>'}
@@ -1039,6 +1063,7 @@ function viewSet() {
       <div class="li"><span class="g">地址</span><input data-chg="text" data-k="shopAddress" value="${esc(st.shopAddress || '')}" placeholder="選填" style="width:60%;background:var(--soft);min-height:44px" aria-label="地址"></div></div>
     <h3>預約規則</h3>
     <div class="list">
+      <div class="li"><span class="g">每週從哪天開始<small>行事曆、小月曆的第一天</small></span><select data-chg="num" data-k="weekStart" style="width:auto;background:var(--soft);min-height:44px">${[[0, '週日'], [1, '週一']].map(([n, l]) => `<option value="${n}" ${weekStart() === n ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
       <div class="li"><span class="g">時段間隔</span><select data-chg="num" data-k="slotStep" style="width:auto;background:var(--soft);min-height:44px">${[15, 30, 60].map(n => `<option value="${n}" ${st.slotStep == n ? 'selected' : ''}>${n} 分鐘</option>`).join('')}</select></div>
       <div class="li"><span class="g">客人可預約幾天內</span><select data-chg="num" data-k="bookAheadDays" style="width:auto;background:var(--soft);min-height:44px">${[7, 14, 30, 60, 90].map(n => `<option value="${n}" ${st.bookAheadDays == n ? 'selected' : ''}>${n} 天</option>`).join('')}</select></div></div>
     <h3>客人線上預約</h3>
@@ -1249,13 +1274,13 @@ function openForm(init = {}) {
     $('#f-sum').textContent = f.dur ? `${durText(f.dur)}・${money(f.price)}` : '';
     $('#f-save').textContent = f.start != null ? `${ex ? '儲存' : '建立'}・${dayWord(f.date)} ${toHM(f.start)}` : (ex ? '儲存變更' : '建立預約');
   }
-  function save() {
+  async function save() {
     const name = $('#f-name').value.trim(), phone = $('#f-phone').value.trim(), note = $('#f-note').value.trim();
     if (!f.dur || f.dur <= 0) return toast('請選擇服務');
     if (f.start == null) return toast('請選擇時間');
     const h = dayHours(f.date);
-    if (overlaps(f.start, f.start + f.dur, busyRanges(f.date, f.id)) && !confirm('這個時段和其他預約重疊，仍要儲存嗎？')) return;
-    if ((!h || f.start < h[0] || f.start + f.dur > h[1]) && !confirm('不在營業時間內，仍要儲存嗎？')) return;
+    if (overlaps(f.start, f.start + f.dur, busyRanges(f.date, f.id)) && !(await ask('這個時段和其他預約重疊，仍要儲存嗎？', '仍要儲存'))) return;
+    if ((!h || f.start < h[0] || f.start + f.dur > h[1]) && !(await ask('不在營業時間內，仍要儲存嗎？', '仍要儲存'))) return;
     const c = ensureCustomer(name, phone, f.customerId);
     const b = { ...(ex || {}), id: f.id || uid(), date: f.date, start: toHM(f.start), duration: +f.dur, price: +f.price || 0,
       services: f.svc.map(lookup).filter(Boolean).map(s => ({ id: s.id, name: s.name, duration: s.duration, price: s.price, color: s.color || '' })),
@@ -1289,10 +1314,10 @@ function openBooking(id) {
     ${contactBtns(b.phone, msg)}
     <div class="acts c2"><button class="btn ghost" data-s="again">再約一次</button><button class="btn ghost red" data-s="del">刪除</button></div>`, {
     done: set('done'), noshow: set('noshow'), reopen: set('booked'),
-    cancel: () => { if (confirm('確定取消這筆預約？')) set('cancelled')(); },
+    cancel: async () => { if (await ask('確定取消這筆預約？', '取消預約')) set('cancelled')(); },
     shift: () => shiftUI(b), edit: () => openForm({ id }),
     again: () => openForm({ customerId: b.customerId, name: b.customerName, phone: b.phone, serviceIds: (b.services || []).map(s => s.id), date: today() }),
-    del: () => { if (confirm('刪除後無法復原，確定刪除？')) { backend.remove('bookings', id); closeSheet(); toast('已刪除'); } }
+    del: async () => { if (await ask('刪除後無法復原，確定刪除？', '刪除')) { backend.remove('bookings', id); closeSheet(); toast('已刪除'); } }
   });
 }
 function openRequests() {
@@ -1311,15 +1336,15 @@ function openRequest(id) {
     ${clash ? '<p class="note" style="color:var(--red)">這個時段與其他預約重疊</p>' : ''}
     <div class="acts c2"><button class="btn ink" data-s="ok">接受</button><button class="btn red" data-s="no">婉拒</button></div>
     ${contactBtns(q.phone, msgOk)}`, {
-    ok: () => {
-      if (clash && !confirm('與其他預約重疊，仍要接受？')) return;
+    ok: async () => {
+      if (clash && !(await ask('與其他預約重疊，仍要接受？', '仍要接受'))) return;
       const c = ensureCustomer(q.name || '', q.phone, null);
       backend.put('bookings', { id: uid(), date: q.date, start: q.start, duration: q.duration, price: q.price, services: q.services || [], customerId: c?.id || null, customerName: q.name || '', phone: q.phone || '', note: q.note || '', status: 'booked', source: 'online', createdAt: Date.now(), reqId: q.editOf || q.id, editKey: q.editKey || '' });
       backend.remove('requests', q.id);
       openSheet(`<h1>已接受</h1><p class="note">要通知客人嗎？</p>${contactBtns(q.phone, msgOk)}<button class="btn" data-s="close" style="width:100%">完成</button>`, { close: closeSheet });
     },
-    no: () => {
-      if (!confirm('婉拒這筆線上預約？')) return;
+    no: async () => {
+      if (!(await ask('婉拒這筆線上預約？', '婉拒'))) return;
       backend.remove('requests', q.id);
       const msgNo = `您好，很抱歉，您申請的預約設計師當天無法安排：\n\n${bookingInfo(q)}\n\n歡迎改約其他時間：${bookLink()}\n\n— ${S.settings.shopName}`;
       openSheet(`<h1>已婉拒</h1><p class="note">通知客人改約其他時間（訊息已寫好，可以再修改）：</p>
@@ -1346,14 +1371,14 @@ function openEditRequest(q, b) {
     <p class="note">接受：原本的預約改成新的時間與項目。婉拒：原本的預約不變。</p>
     <div class="acts c2"><button class="btn ink" data-s="ok">接受修改</button><button class="btn red" data-s="no">婉拒修改</button></div>
     ${contactBtns(q.phone || b.phone, msgOk)}`, {
-    ok: () => {
-      if (clash && !confirm('與其他預約重疊，仍要接受？')) return;
+    ok: async () => {
+      if (clash && !(await ask('與其他預約重疊，仍要接受？', '仍要接受'))) return;
       backend.put('bookings', { ...b, date: q.date, start: q.start, duration: q.duration, price: q.price, services: q.services || [], customerName: q.name || b.customerName, phone: q.phone || b.phone, note: q.note || '', editedAt: Date.now() });
       backend.remove('requests', q.id);
       openSheet(`<h1>已接受修改</h1><p class="note">通知客人新的時間：</p>${contactBtns(q.phone || b.phone, msgOk)}<button class="btn" data-s="close" style="width:100%">完成</button>`, { close: closeSheet });
     },
-    no: () => {
-      if (!confirm('婉拒這次修改？原本的預約會保留。')) return;
+    no: async () => {
+      if (!(await ask('婉拒這次修改？原本的預約會保留。', '婉拒'))) return;
       backend.remove('requests', q.id);
       openSheet(`<h1>已婉拒修改</h1><p class="note">告訴客人原本的預約不變（訊息已寫好）：</p>${contactBtns(q.phone || b.phone, msgNo)}<button class="btn" data-s="close" style="width:100%">關閉</button>`, { close: closeSheet });
     }
@@ -1381,7 +1406,7 @@ function editCustomer(c) {
       const obj = { ...(c || { id: uid(), createdAt: Date.now() }), name, phone, note: $('#c-note').value.trim() };
       backend.put('customers', obj); openCustomer(obj.id); toast('已儲存');
     },
-    del: () => { if (confirm('刪除這位客人？')) { backend.remove('customers', c.id); closeSheet(); } }
+    del: async () => { if (await ask('刪除這位客人？', '刪除')) { backend.remove('customers', c.id); closeSheet(); } }
   }, sh => { $('#c-name', sh).value = c?.name || ''; $('#c-phone', sh).value = c?.phone || ''; $('#c-note', sh).value = c?.note || ''; });
 }
 function editService(s) {
@@ -1399,7 +1424,7 @@ function editService(s) {
       backend.put('services', { ...(s || { id: uid(), order: Math.max(-1, ...S.services.map(x => x.order ?? 0)) + 1 }), name, duration, price: +$('#v-price').value || 0, color, active: $('#v-active').checked });
       closeSheet(); toast('已儲存');
     },
-    del: () => { if (confirm(`刪除「${s.name}」？過去紀錄不受影響。`)) { backend.remove('services', s.id); closeSheet(); } }
+    del: async () => { if (await ask(`刪除「${s.name}」？過去紀錄不受影響。`, '刪除')) { backend.remove('services', s.id); closeSheet(); } }
   }, sh => { $('#v-name', sh).value = s?.name || ''; $('#v-dur', sh).value = s?.duration || 60; $('#v-price', sh).value = s?.price ?? ''; $('#v-active', sh).checked = s ? s.active !== false : true; });
 }
 
@@ -1456,7 +1481,7 @@ const ACT = {
       show(!!d.ok, Object.entries(d.checks || { error: d.error || ('HTTP ' + r.status) }));
     } catch (e) { show(false, [['連線', '連不到通知服務，請確認網址是否正確']]); }
   },
-  cloudoff: () => { if (confirm('改回單機版？雲端資料不會被刪除，之後可以再切回來。')) { localStorage.removeItem(LS_FB); location.reload(); } },
+  cloudoff: async () => { if (await ask('改回單機版？雲端資料不會被刪除，之後可以再切回來。')) { localStorage.removeItem(LS_FB); location.reload(); } },
   export: async () => {
     let bookings = S.bookings;
     if (backend.allBookings) { try { toast('整理中…'); bookings = await backend.allBookings(); } catch { toast('只匯出近一年的資料'); } }
@@ -1464,7 +1489,7 @@ const ACT = {
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([data], { type: 'application/json' })); a.download = `預約備份-${today()}.json`; document.body.appendChild(a); a.click(); a.remove();
   },
   import: () => $('#import-file').click(),
-  logout: () => { if (confirm('確定登出？')) backend.logout(); }
+  logout: async () => { if (await ask('確定登出？', '登出')) backend.logout(); }
 };
 const CHG = {
   jump: t => { if (t.value) { U.date = t.value; U.mini = null; render(); } },
@@ -1519,13 +1544,13 @@ $('#import-file').onchange = async e => {
   try {
     const d = JSON.parse(await file.text());
     if (d.app !== 'salon' || !d.settings) throw new Error('格式不符');
-    if (!confirm(`匯入 ${d.bookings?.length || 0} 筆預約、${d.customers?.length || 0} 位客人？${backend.mode === 'local' ? '目前資料會被取代。' : ''}`)) return;
+    if (!(await ask(`匯入 ${d.bookings?.length || 0} 筆預約、${d.customers?.length || 0} 位客人？${backend.mode === 'local' ? '目前資料會被取代。' : ''}`, '匯入'))) return;
     await backend.replaceAll(d); toast('匯入完成');
   } catch (err) { toast('匯入失敗：' + err.message); }
 };
 /* 鍵盤快捷鍵（電腦） */
 document.addEventListener('keydown', e => {
-  if (!S.settings || e.metaKey || e.ctrlKey || e.altKey || e.target.matches?.('input,select,textarea')) return;
+  if (!S.settings || e.metaKey || e.ctrlKey || e.altKey || e.target.matches?.('input,select,textarea') || $('#confirm-root').classList.contains('open')) return;
   if (e.key === 'Escape') { if (sheetOpen()) closeSheet(); return; }
   if (!isDesk() || sheetOpen() || alertFor) return;
   const k = e.key.toLowerCase();
