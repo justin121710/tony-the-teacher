@@ -210,38 +210,16 @@ body.desk .sbody{padding:14px 20px 24px}
 .ev:hover{z-index:3;box-shadow:0 0 0 1.5px var(--card),0 6px 16px rgba(27,27,31,.18)}
 .ev b{font-size:14px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ev small{font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ev b .num{font-weight:800}
+.ev small.end{font-weight:500;opacity:.75;font-size:11px}
 .ev.tiny{flex-direction:row;align-items:center;gap:6px;padding:0 8px}
+.ev.tiny small.end{display:none}
+.ev.free{background:transparent;border:1.5px dashed var(--dash);color:var(--muted);box-shadow:none;align-items:center;justify-content:center;font-size:12.5px;font-weight:700;z-index:0;white-space:nowrap}
+.ev.free:hover{border-color:var(--ink);color:var(--ink);background:#FFFBF6;box-shadow:none}
 .ev.req{background:#fff;border:2px dashed var(--ink)}
 .ev.past{opacity:.5}
 .cal-now{position:absolute;left:-1px;right:0;height:2px;background:var(--red);z-index:2;pointer-events:none}
 .cal-now::before{content:"";position:absolute;left:-1px;top:-4px;width:10px;height:10px;border-radius:50%;background:var(--red)}
-.dk-seg.sm{padding:2px;border-radius:12px}.dk-seg.sm button{height:30px;padding:0 10px;border-radius:10px;font-size:13px}
-.dk2 .dk-tn{position:sticky;top:0;z-index:8;height:68px;display:flex;align-items:center;gap:14px;padding:0 24px;background:#FBF1E5;border-bottom:1px solid var(--line)}
-.dk-tn .dk-nav{flex-direction:row;margin-left:12px}
-.dk-tn .dk-seg{margin-left:auto}
-.dk-tn .big{width:auto;min-height:46px;font-size:16px;border-radius:16px;padding:0 18px}
-.dk2 .dk-main{padding:0 24px 40px}
-.dk2 .dk-top{top:68px}
-.dk-split{display:grid;gap:24px;align-items:start}
-.dk-split.b{grid-template-columns:380px minmax(0,1fr)}
-.dk-split.c{grid-template-columns:minmax(0,1fr) 380px}
-.dk-list{position:sticky;top:68px;max-height:calc(100vh - 68px);overflow:auto;padding:16px 4px 24px;scrollbar-width:thin}
-.dk-month{padding-top:16px}
-.st-b .dk-cal .clock{display:none}
-.mgrid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
-.mw{font-size:12px;color:var(--muted);font-weight:700;text-align:center}
-.mc{min-height:118px;border-radius:16px;background:var(--card);padding:6px;display:flex;flex-direction:column;gap:3px;align-items:stretch;min-width:0}
-.mc.blank{background:transparent}
-.mc:hover{box-shadow:inset 0 0 0 2px var(--line)}
-.mc.off{background:repeating-linear-gradient(135deg,#FBF4EC 0 6px,#fff 6px 12px)}
-.mc.sel{box-shadow:inset 0 0 0 3px var(--ink)}
-.mc-d{font-weight:800;font-size:14px;width:26px;height:26px;display:grid;place-items:center;border-radius:50%}
-.mc.td .mc-d{background:var(--ink);color:#fff}
-.mc i{font-style:normal;font-size:12px;font-weight:700;background:var(--c);border-radius:7px;padding:1px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.mc i.rq{background:#fff;border:1.5px dashed var(--ink)}
-.mc i.past{opacity:.5}
-.mc em{font-style:normal;font-size:11.5px;color:var(--muted);font-weight:700;padding-left:4px}
-@media (max-width:1200px){.dk-split.b,.dk-split.c{grid-template-columns:1fr}.dk-list{position:static;max-height:none}.dk-tn .dk-nav button{padding:0 8px}.dk-tn .dk-nav svg{display:none}}
 @media (max-width:1100px){.dk{grid-template-columns:208px minmax(0,1fr)}.dk-main{padding:0 14px 32px}}
 </style>
 </head>
@@ -800,16 +778,13 @@ function reqRow(q, withDate) {
 const gapHtml = (a, b) => `<button class="gap" data-act="new" data-start="${a}"><span class="num">${toHM(a)}</span><span class="g">空檔 ${durText(b - a)}</span><span class="p">+</span></button>`;
 
 /* ---------- 桌面版（電腦、iPad） ---------- */
-const LS_LAYOUT = 'tony-layout', LS_CAL = 'tony-cal', LS_DSTYLE = 'tony-dstyle';
+const LS_LAYOUT = 'tony-layout', LS_CAL = 'tony-cal';
 const lsGet = (k, d) => { try { return localStorage.getItem(k) || d; } catch { return d; } };
 const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
 const wideMQ = matchMedia('(min-width: 744px) and (min-height: 560px)');   // iPad 直放以上；手機橫放不算
 const isDesk = () => { const p = lsGet(LS_LAYOUT, 'auto'); return p === 'desk' || (p === 'auto' && wideMQ.matches); };
 try { wideMQ.addEventListener('change', () => render()); } catch {}
 U.cal = lsGet(LS_CAL, innerWidth >= 1000 ? 'week' : '3');
-const DSTYLES = [['a', 'A 側欄＋週行事曆'], ['b', 'B 今日清單＋週行事曆'], ['c', 'C 月曆總覽＋當日清單']];
-const dstyle = () => { const v = lsGet(LS_DSTYLE, 'a'); return DSTYLES.some(([k]) => k === v) ? v : 'a'; };
-const styleSeg = () => `<div class="dk-seg sm" title="桌面版樣式">${DSTYLES.map(([k, l]) => `<button class="${dstyle() === k ? 'on' : ''}" data-act="dstyle" data-v="${k}" title="${l}">${k.toUpperCase()}</button>`).join('')}</div>`;
 const CAL_PX = 1.2;   // 每分鐘幾像素（一小時 72px）
 const CAL_STEP = { day: 1, 3: 3, week: 7 };
 function calDays() {
@@ -823,19 +798,10 @@ const NAV_ICON = {
   set: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2.2"/><circle cx="10" cy="17" r="2.2"/></svg>'
 };
 function viewDesk() {
-  const cur = U.tab === 'day' ? 'cal' : U.more, st = dstyle();
+  const cur = U.tab === 'day' ? 'cal' : U.more;
   const nav = [['cal', '行事曆'], ['income', '收入'], ['cust', '客人'], ['set', '設定']]
     .map(([k, l]) => `<button class="${cur === k ? 'on' : ''}" data-act="nav" data-v="${k}">${NAV_ICON[k]}${l}</button>`).join('');
   const page = () => `<div class="dk-page">${({ income: viewIncome, cust: viewCust, set: viewSet })[cur]()}</div>`;
-  if (st !== 'a') {
-    // B／C：上方選單列
-    const bar = `<header class="dk-tn"><div class="dk-brand"><img src="icons/mark.png" alt="" width="34" height="34"><b>${esc(S.settings.shopName)}</b></div>
-      <nav class="dk-nav" aria-label="主選單">${nav}</nav>${styleSeg()}<button class="big" data-act="new">＋ 新增預約</button></header>`;
-    const main = cur !== 'cal' ? page()
-      : st === 'b' ? `<div class="dk-split b"><section class="dk-list">${viewDay()}</section><section class="dk-cal">${viewCal()}</section></div>`
-      : `<div class="dk-split c"><section class="dk-month">${viewMonth()}</section><section class="dk-list">${viewDay()}</section></div>`;
-    return `<div class="dk2 st-${st}">${bar}<main class="dk-main">${main}</main></div>`;
-  }
   const side = `<aside class="dk-side">
     <div class="dk-brand"><img src="icons/mark.png" alt="" width="36" height="36"><b>${esc(S.settings.shopName)}</b></div>
     <button class="big" data-act="new">＋ 新增預約</button>
@@ -843,7 +809,6 @@ function viewDesk() {
     ${sideNow()}
     ${S.requests.length ? `<h3>線上預約待確認（${S.requests.length}）</h3><div class="rows">${[...S.requests].sort(byStart).map(q => reqRow(q, true)).join('')}</div>` : ''}
     ${miniCal()}
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:13px;color:var(--muted);font-weight:700;margin-top:auto;padding:0 4px">版面${styleSeg()}</div>
   </aside>`;
   const main = cur === 'cal' ? viewCal() : page();
   return `<div class="dk">${side}<main class="dk-main">${main}</main></div>`;
@@ -915,41 +880,32 @@ function viewCal() {
     const h = dayHours(d);
     let c = !h ? '<div class="cal-off" style="top:0;bottom:0"><span>公休</span></div>'
       : [[lo, h[0]], [h[1], hi]].filter(([a, b]) => b > a).map(([a, b]) => `<div class="cal-off" style="top:${P(a)}px;height:${(b - a) * CAL_PX}px"></div>`).join('');
+    // 空檔：今天（現在之後）與之後的日子，直接標「空多久」，點一下就新增
+    if (h && d >= t) {
+      const step = S.settings.slotStep || 30, floor = d === t ? Math.ceil((n + 1) / step) * step : -Infinity;
+      const busy = evs[i].filter(v => v.q || v.b.status === 'booked' || v.b.status === 'done').map(v => [v.s, v.e]).sort((a, b) => a[0] - b[0]);
+      const gap = (a, b) => { if (b - a >= step) c += `<button class="ev free" data-act="new" data-d="${d}" data-start="${a}" style="top:${P(a) + 1}px;height:${(b - a) * CAL_PX - 2}px;left:3px;width:calc(100% - 6px)" title="${toHM(a)} 起空 ${durText(b - a)}">${durText(b - a)}</button>`; };
+      let cur = Math.max(h[0], floor);
+      for (const [s0, e0] of busy) { gap(cur, Math.min(s0, h[1])); cur = Math.max(cur, e0); }
+      gap(cur, h[1]);
+    }
+    // 預約：大字只寫開始時間＋項目，結束時間小字
     lanes(evs[i]).forEach(v => {
       const x = v.b || v.q, ht = Math.max(20, (v.e - v.s) * CAL_PX - 2), tiny = ht < 44;
       const pos = `top:${P(v.s) + 1}px;height:${ht}px;left:calc(${v.lane / v.n * 100}% + 3px);width:calc(${100 / v.n}% - 6px)`;
-      const range = `${x.start}–${toHM(v.e)}`;
-      if (v.q) { c += `<button class="ev req ${tiny ? 'tiny' : ''}" data-act="req" data-id="${x.id}" style="${pos}"><b>${esc((x.services || []).map(s => s.name).join('＋'))}</b><small class="num">${range}</small><small>${reqLabel(x)}</small></button>`; return; }
+      const head = (name) => `<b><span class="num">${x.start}</span> ${esc(name)}</b>`, end = `<small class="end num">至 ${toHM(v.e)}</small>`;
+      if (v.q) { c += `<button class="ev req ${tiny ? 'tiny' : ''}" data-act="req" data-id="${x.id}" style="${pos}">${head((x.services || []).map(s => s.name).join('＋'))}${end}<small>${reqLabel(x)}</small></button>`; return; }
       const due = x.status === 'booked' && (d < t || (d === t && v.e <= n));
       const sub = x.status !== 'booked' ? STATUS[x.status] : due ? '未按完成' : who(x) + (x.source === 'online' ? '・線上' : '');
-      c += `<button class="ev ${x.status !== 'booked' ? 'past' : ''} ${tiny ? 'tiny' : ''}" data-act="bk" data-id="${x.id}" style="${pos};--c:${colorOf(x)}" title="${esc(range + ' ' + svcNames(x) + (who(x) ? '・' + who(x) : ''))}">
-        <b>${esc(svcNames(x))}</b><small class="num">${range}</small>${sub ? `<small>${esc(sub)}</small>` : ''}</button>`;
+      c += `<button class="ev ${x.status !== 'booked' ? 'past' : ''} ${tiny ? 'tiny' : ''}" data-act="bk" data-id="${x.id}" style="${pos};--c:${colorOf(x)}" title="${esc(x.start + '–' + toHM(v.e) + ' ' + svcNames(x) + (who(x) ? '・' + who(x) : ''))}">
+        ${head(svcNames(x))}${end}${sub ? `<small>${esc(sub)}</small>` : ''}</button>`;
     });
     if (d === t && n >= lo && n <= hi) c += `<div class="cal-now" style="top:${P(n)}px"></div>`;
     return `<div class="cal-col" data-act="calnew" data-d="${d}" data-lo="${lo}">${c}</div>`;
   }).join('');
   return `<div class="dk-top">${top}<div class="cal-head" style="--cols:${days.length}"><span></span>${head}</div></div>
     <div class="cal-body" style="--cols:${days.length};--hh:${60 * CAL_PX}px;height:${(hi - lo) * CAL_PX}px"><div class="cal-times">${times}</div>${cols}</div>
-    <p class="note">點行事曆的空白處就能新增該時段的預約。快捷鍵：← → 換頁、T 回今天、N 新增預約、Esc 關閉視窗。</p>`;
-}
-// 樣式 C：整月總覽，每格列出當天預約
-function viewMonth() {
-  const m = U.date.slice(0, 7), [y, mo] = m.split('-').map(Number), t = today();
-  const off = (new Date(y, mo - 1, 1).getDay() + 6) % 7, n = new Date(y, mo, 0).getDate();
-  let cells = '<div class="mc blank"></div>'.repeat(off), cnt = 0, rev = 0;
-  for (let i = 1; i <= n; i++) {
-    const d = m + '-' + pad(i);
-    const bs = S.bookings.filter(b => b.date === d && b.status !== 'cancelled').sort(byStart), qs = S.requests.filter(q => q.date === d).sort(byStart);
-    bs.forEach(b => { if (b.status === 'booked' || b.status === 'done') { cnt++; rev += b.price || 0; } });
-    const chips = [...qs.map(q => `<i class="rq" style="--c:${q.services?.[0]?.color || PALETTE[7]}"><span class="num">${q.start}</span> 待確認</i>`),
-      ...bs.map(b => `<i class="${b.status !== 'booked' ? 'past' : ''}" style="--c:${colorOf(b)}"><span class="num">${b.start}</span> ${esc(svcNames(b))}</i>`)];
-    cells += `<button class="mc ${d === t ? 'td' : ''} ${d === U.date ? 'sel' : ''} ${dayHours(d) ? '' : 'off'}" data-act="goto" data-d="${d}">
-      <span class="mc-d num">${i}</span>${!dayHours(d) ? '<em>公休</em>' : ''}${chips.slice(0, 3).join('')}${chips.length > 3 ? `<em>還有 ${chips.length - 3} 筆</em>` : ''}</button>`;
-  }
-  return `<div class="hd dk-bar"><button class="ib" data-act="mon2" data-n="-1" aria-label="上個月">‹</button><button class="ib" data-act="mon2" data-n="1" aria-label="下個月">›</button>
-      <h1>${y} 年 ${mo} 月</h1><button class="pill" data-act="today">今天</button></div>
-    <div class="mgrid">${[...'一二三四五六日'].map(w => `<span class="mw">${w}</span>`).join('')}${cells}</div>
-    <div class="sum">這個月 ${cnt} 組・預估 ${money(rev)}</div>`;
+    <p class="note">虛線框是空檔（寫的是空多久），點空檔或任何空白處就能新增該時段的預約。快捷鍵：← → 換頁、T 回今天、N 新增預約、Esc 關閉視窗。</p>`;
 }
 function qrSvg(text) {
   try {
@@ -1059,7 +1015,6 @@ function viewSet() {
     <h3>這台裝置</h3>
     <div class="list">
       <div class="li"><span class="g"><b>畫面版型</b><small>自動：電腦、iPad 顯示桌面版行事曆，手機顯示手機版</small></span><select data-chg="layout" style="width:auto;background:var(--soft);min-height:44px" aria-label="畫面版型">${[['auto', '自動'], ['desk', '桌面版'], ['phone', '手機版']].map(([k, l]) => `<option value="${k}" ${lsGet(LS_LAYOUT, 'auto') === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
-      ${isDesk() ? `<div class="li"><span class="g"><b>桌面版樣式</b><small>${DSTYLES.find(([k]) => k === dstyle())[1]}</small></span>${styleSeg()}</div>` : ''}
       ${cloud ? '<button class="li" data-act="device"><span class="g"><b>在電腦／iPad 上使用</b><small>產生登入連結或 QR Code，不用重新貼雲端設定</small></span><span style="color:var(--muted)">›</span></button>' : ''}
     </div>
     <h3>資料</h3>
@@ -1414,7 +1369,7 @@ const ACT = {
   gohome: () => { U.tab = 'day'; U.date = today(); render(); },
   ended: () => { U.showEnded = !U.showEnded; render(); },
   unlock: () => { unlockAudio(); chime(); toast('提醒聲音已開啟'); },
-  new: t => openForm({ date: U.date, start: t.dataset.start ? +t.dataset.start : null }),
+  new: t => openForm({ date: t.dataset.d || U.date, start: t.dataset.start ? +t.dataset.start : null }),
   nav: t => { const v = t.dataset.v; if (v === 'cal') U.tab = 'day'; else { U.tab = 'more'; U.more = v; } window.scrollTo(0, 0); render(); },
   cal: t => { U.date = addDays(U.date, +t.dataset.n * (CAL_STEP[U.cal] || 1)); U.mini = null; render(); },
   calv: t => { U.cal = t.dataset.v; lsSet(LS_CAL, U.cal); render(); },
@@ -1427,8 +1382,6 @@ const ACT = {
     openForm({ date: d, start: +t.dataset.lo + Math.floor(y / CAL_PX / step) * step });
   },
   device: () => deviceSetup(),
-  dstyle: t => { lsSet(LS_DSTYLE, t.dataset.v); window.scrollTo(0, 0); render(); },
-  mon2: t => { const [y, m] = U.date.slice(0, 7).split('-').map(Number); const d = new Date(y, m - 1 + +t.dataset.n, 1), k = d.getFullYear() + '-' + pad(d.getMonth() + 1); U.date = today().startsWith(k) ? today() : k + '-01'; render(); },
   bk: t => openBooking(t.dataset.id),
   done: t => { const b = S.bookings.find(x => x.id === t.dataset.id); if (b) { backend.put('bookings', { ...b, status: 'done', doneAt: Date.now() }); toast('已完成 ' + money(b.price)); } },
   shift: t => { const b = S.bookings.find(x => x.id === t.dataset.id); if (b) shiftUI(b); },
