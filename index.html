@@ -199,12 +199,17 @@ function parseConfig(text) {
   if (!o.apiKey || !o.projectId) throw new Error('缺少 apiKey 或 projectId');
   return o;
 }
+const BOT_EMAIL = 'notify-bot@tony-teacher.app';
 function rulesText(email) {
   return `rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     function isOwner() {
       return request.auth != null && request.auth.token.email == '${email}';
+    }
+    // 通知機器人：只能讀取，用來發 LINE／Email 通知
+    function isBot() {
+      return request.auth != null && request.auth.token.email == '${BOT_EMAIL}';
     }
     match /public/{doc} { allow read: if true; allow write: if isOwner(); }
     match /busy/{date} { allow read: if true; allow write: if isOwner(); }
@@ -231,7 +236,10 @@ service cloud.firestore {
         && request.resource.data.createdAt is int;
       allow read, update, delete: if isOwner();
     }
-    match /{coll}/{id} { allow read, write: if isOwner(); }
+    match /{coll}/{id} {
+      allow read, write: if isOwner();
+      allow read: if isBot() && coll in ['settings', 'bookings', 'requests'];
+    }
   }
 }`;
 }
@@ -356,7 +364,7 @@ async function cloudBackend() {
   const syncBusy = date => { if (date) F.setDoc(F.doc(db, 'busy', date), { ranges: busyRanges(date).map(([s, e]) => ({ s, e })) }).catch(fail); };
   const syncPublic = () => { clearTimeout(pubT); pubT = setTimeout(() => {
     if (!S.settings) return; const st = S.settings;
-    F.setDoc(F.doc(db, 'public', 'info'), clean({ shopName: st.shopName, shopPhone: st.shopPhone || '', shopLine: st.shopLine || '', shopAddress: st.shopAddress || '',
+    F.setDoc(F.doc(db, 'public', 'info'), clean({ shopName: st.shopName, shopPhone: st.shopPhone || '', shopLine: st.shopLine || '', shopAddress: st.shopAddress || '', notifyUrl: st.notifyUrl || '',
       slotStep: st.slotStep, bookAheadDays: st.bookAheadDays, holidays: st.holidays, hours: st.hours,
       services: activeServices().map(s => ({ id: s.id, name: s.name, duration: s.duration, price: s.price, color: s.color || '' })) })).catch(fail);
   }, 800); };
@@ -413,6 +421,7 @@ async function cloudBackend() {
       });
     },
     async allBookings() { const snap = await F.getDocs(F.collection(db, 'bookings')); return snap.docs.map(d => ({ ...d.data(), id: d.id })); },
+    async idToken() { return auth.currentUser ? auth.currentUser.getIdToken() : ''; },
     async login(email, pw) { await A.signInWithEmailAndPassword(auth, email, pw); },
     async resetPw(email) { await A.sendPasswordResetEmail(auth, email); },
     logout() { A.signOut(auth); },
@@ -726,6 +735,12 @@ function viewSet() {
       <a onclick="try{sessionStorage.setItem('tony-return','set')}catch(e){}" class="big" href="${esc(cardLink())}" style="margin-top:8px;text-decoration:none">預約 QR 卡（可列印、傳 LINE）</a></div>
       <div class="list" style="margin-top:8px"><button class="li" data-act="rules"><span class="g"><b>資料庫安全規則</b><small>專案 ${esc(FIREBASE_CONFIG.projectId)}・登入帳號 ${esc(backend.email())}</small></span></button></div>`
       : `<div class="list" style="padding:14px 16px"><p style="margin:0 0 12px">目前是單機版，客人還不能線上預約，資料也只在這支手機。</p><button class="big" data-act="cloudsetup">開啟雲端同步＋線上預約</button></div>`}
+    ${cloud ? `<h3>LINE／Email 通知（關閉 APP 也收得到）</h3>
+    <div class="list" style="padding:14px 16px">
+      <p style="margin:0 0 10px;font-size:14px;color:var(--muted)">有新的線上預約、每天早上 9 點的今日行程，會傳到設計師的 LINE（可加 Email）。設定方式見操作手冊附錄 C。</p>
+      <label class="field" style="margin:0 0 10px"><span>通知服務網址（Cloudflare Worker）</span><input data-chg="text" data-k="notifyUrl" value="${esc(st.notifyUrl || '')}" placeholder="https://tony-notify.xxxx.workers.dev" inputmode="url" autocomplete="off" style="background:var(--soft)"></label>
+      <button class="big" data-act="testnotify" ${st.notifyUrl ? '' : 'disabled style="opacity:.4"'}>傳送測試通知</button>
+    </div>` : ''}
     <h3>資料</h3>
     <div class="acts c2"><button class="btn" data-act="export">匯出備份</button><button class="btn" data-act="import">匯入備份</button></div>
     ${cloud ? `<div class="acts c2"><button class="btn ghost" data-act="logout">登出</button>${CFG_SRC === 'local' ? '<button class="btn ghost" data-act="cloudoff">改回單機版</button>' : ''}</div>` : '<p class="note">單機版資料只存在這支手機，請定期匯出備份。</p>'}
@@ -1065,6 +1080,21 @@ const ACT = {
   sharelink: async () => { const l = bookLink(); try { if (navigator.share) await navigator.share({ title: S.settings.shopName + '｜線上預約', text: '線上預約這裡點 ↓', url: l }); else { await navigator.clipboard.writeText(l); toast('已複製連結'); } } catch {} },
   rules: () => showRulesHelp(false),
   cloudsetup: () => cloudSetup(),
+  testnotify: async () => {
+    const url = (S.settings.notifyUrl || '').trim().replace(/\/+$/, '');
+    if (!/^https:\/\//.test(url)) return toast('請先填入 https:// 開頭的網址');
+    toast('測試中…');
+    const label = { settings: '設定', owner: '設計師身分', database: '讀取預約資料', line: 'LINE', email: 'Email' };
+    const show = (ok, rows) => openSheet(`<h1>${ok ? '設定完成' : '還有地方要修正'}</h1>
+      <dl class="kv">${rows.map(([k, v]) => `<div><dt>${esc(label[k] || k)}</dt><dd style="color:${v === 'ok' ? 'var(--ink)' : v === 'skipped' ? 'var(--muted)' : 'var(--red)'}">${v === 'ok' ? '✓ 正常' : v === 'skipped' ? '未設定（選用）' : esc(v)}</dd></div>`).join('')}</dl>
+      <p class="note">${ok ? '手機 LINE 應該已經收到一則測試訊息。' : '依照紅字修正 Cloudflare 的設定後再按一次測試。'}</p>
+      <button class="btn" data-s="close" style="width:100%">關閉</button>`, { close: closeSheet });
+    try {
+      const r = await fetch(url + '/test', { method: 'POST', headers: { Authorization: 'Bearer ' + await backend.idToken() } });
+      const d = await r.json();
+      show(!!d.ok, Object.entries(d.checks || { error: d.error || ('HTTP ' + r.status) }));
+    } catch (e) { show(false, [['連線', '連不到通知服務，請確認網址是否正確']]); }
+  },
   cloudoff: () => { if (confirm('改回單機版？雲端資料不會被刪除，之後可以再切回來。')) { localStorage.removeItem(LS_FB); location.reload(); } },
   export: async () => {
     let bookings = S.bookings;

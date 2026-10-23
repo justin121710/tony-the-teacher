@@ -5,6 +5,10 @@ service cloud.firestore {
     function isOwner() {
       return request.auth != null && request.auth.token.email == 'stylist@example.com';
     }
+    // 通知機器人：只能讀取，用來發 LINE／Email 通知
+    function isBot() {
+      return request.auth != null && request.auth.token.email == 'notify-bot@tony-teacher.app';
+    }
     match /public/{doc} { allow read: if true; allow write: if isOwner(); }
     match /busy/{date} { allow read: if true; allow write: if isOwner(); }
     match /holds/{id} {
@@ -30,6 +34,9 @@ service cloud.firestore {
         && request.resource.data.createdAt is int;
       allow read, update, delete: if isOwner();
     }
-    match /{coll}/{id} { allow read, write: if isOwner(); }
+    match /{coll}/{id} {
+      allow read, write: if isOwner();
+      allow read: if isBot() && coll in ['settings', 'bookings', 'requests'];
+    }
   }
 }

@@ -19,6 +19,8 @@
 - **一鍵順延**：只移動真的會撞到的預約，並帶出寫好的簡訊通知客人。
 - **客人線上預約**：選服務 → 選空檔 → 留電話，設計師在 APP 裡接受或婉拒；送出時會先佔住時段，避免兩位客人同時搶到。
 - **收入統計、客人紀錄、營業時間、公休日、服務項目**自訂。
+- **LINE／Email 通知**：新的線上預約、每天早上 9 點今日行程，關閉 APP 也收得到（`notify/worker.js`，部署到 Cloudflare Workers）。
+- **預約 QR 卡**：產生可列印、可傳 LINE 的預約圖卡。
 - 可加到主畫面當 APP 用（PWA），沒網路時也打得開。
 
 ## 兩種模式
@@ -39,6 +41,8 @@
 | `index.html` | 設計師 APP |
 | `book.html` | 客人預約頁 |
 | `config.js` | （選用）把 Firebase 設定寫死在這裡，所有手機自動連線 |
+| `card.html`、`qr.js` | 預約 QR 卡（內建 QR Code 產生器） |
+| `notify/worker.js` | 通知中繼服務（Cloudflare Worker），設定見手冊附錄 C |
 | `firestore.rules` | Firestore 安全規則範本（APP 內會自動帶入登入 Email） |
 | `sw.js`、`manifest.webmanifest`、`icons/` | 主畫面 APP 與離線快取 |
 | `docs/操作手冊.pdf` | 操作手冊 |

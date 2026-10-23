@@ -205,10 +205,11 @@ async function start() {
           alert('不好意思，這個時段剛剛被預約走了，請再選一個時間。'); return;
         }
         const hold = await F.addDoc(F.collection(db, 'holds'), { date: st.date, s: s0, e: e0, createdAt: Date.now() });
-        await F.addDoc(F.collection(db, 'requests'), { date: st.date, start: toHM(st.start), duration: dur(), price: price(),
+        const reqRef = await F.addDoc(F.collection(db, 'requests'), { date: st.date, start: toHM(st.start), duration: dur(), price: price(),
           services: chosen().map(s => ({ id: s.id, name: s.name, duration: s.duration, price: s.price, color: s.color || '' })),
           name: st.name.trim(), phone, note: st.note.trim(), status: 'pending', createdAt: Date.now(), holdId: hold.id });
         try { localStorage.setItem('tony-cust', JSON.stringify({ name: st.name.trim(), phone })); } catch {}
+        if (/^https:\/\//.test(info.notifyUrl || '')) fetch(info.notifyUrl.replace(/\/+$/, '') + '/new', { method: 'POST', body: JSON.stringify({ id: reqRef.id }), headers: { 'Content-Type': 'text/plain' }, keepalive: true }).catch(() => {});
         st.step = 4; window.scrollTo(0, 0); render();
       } catch { st.sending = false; render(); $('#err').textContent = '送出失敗，請稍後再試或直接聯絡設計師'; }
     }
