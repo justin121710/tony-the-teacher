@@ -20,17 +20,20 @@ h1{font-size:22px;font-weight:900;margin:4px 4px 4px}
 .btn.ink{background:var(--ink);color:#fff}
 .full{grid-column:1/-1}
 .err{background:#fff;border-radius:18px;padding:22px;text-align:center}
+.topbar{display:flex;align-items:center;gap:8px;margin:0 0 10px}
+.back{min-height:44px;padding:0 16px 0 10px;border-radius:16px;background:var(--soft);border:0;font:inherit;font-weight:900;color:var(--ink);display:inline-flex;align-items:center;gap:4px;cursor:pointer}
 @media print{
   @page{size:A5 portrait;margin:0}
   body{background:#fff}
   main{max-width:none;padding:0}
-  h1,.note,.acts{display:none}
+  h1,.note,.acts,.topbar{display:none}
   #card{width:100%;height:100vh;object-fit:contain;border-radius:0;box-shadow:none}
 }
 </style>
 </head>
 <body>
 <main id="m">
+  <div class="topbar"><button class="back" id="back" aria-label="返回"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>返回設定</button></div>
   <h1>客人預約 QR 卡</h1>
   <p class="note">存成圖片傳 LINE、發 IG 限動，或列印貼在店裡。客人用手機相機掃描就能直接預約。<br>iPhone 也可以長按圖片 →「加入照片」。</p>
   <img id="card" alt="線上預約 QR 卡">
@@ -41,11 +44,16 @@ h1{font-size:22px;font-weight:900;margin:4px 4px 4px}
   </div>
 </main>
 <script>
+function goBack() {
+  if (history.length > 1) history.back();
+  else { try { window.close(); } catch {} setTimeout(() => { location.href = 'index.html'; }, 250); }
+}
+document.getElementById('back').onclick = goBack;
 (async () => {
   const q = new URLSearchParams(location.hash.slice(1));
   const url = q.get('u') || '', shop = q.get('n') || '線上預約', phone = q.get('p') || '', line = q.get('l') || '';
   if (!/^https?:\/\//.test(url)) {
-    document.getElementById('m').innerHTML = '<div class="err"><h1>找不到預約連結</h1><p class="note">請從 Tony老師 APP 的「管理 → 設定 → 客人線上預約 → 預約 QR 卡」開啟這一頁。</p></div>';
+    document.getElementById('m').innerHTML = '<div class="topbar"><button class="back" onclick="goBack()">‹ 返回</button></div><div class="err"><h1>找不到預約連結</h1><p class="note">請從 Tony老師 APP 的「管理 → 設定 → 客人線上預約 → 預約 QR 卡」開啟這一頁。</p></div>';
     return;
   }
   const W = 1240, H = 1754, c = document.createElement('canvas'); c.width = W; c.height = H;   // A5 比例，150dpi

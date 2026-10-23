@@ -58,6 +58,8 @@ input:focus,textarea:focus{border-color:var(--ink)}
 .go small{display:block;font-size:12px;font-weight:500;color:#D9D3CC}
 .center{text-align:center}
 .contact{display:flex;gap:8px;margin:14px 0 0}.cbtn{flex:1;min-height:50px;border-radius:18px;background:var(--soft);display:grid;place-items:center;font-weight:900;text-decoration:none;color:var(--ink)}
+.pvbar{position:sticky;top:0;z-index:10;margin:-18px -16px 12px;padding:calc(env(safe-area-inset-top) + 8px) 12px 8px 16px;background:#1B1B1F;color:#fff;display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:14px;font-weight:700}
+.pvbar button{min-height:40px;padding:0 14px;border-radius:14px;background:#fff;color:#1B1B1F;font-weight:900}
 .ok{width:64px;height:64px;border-radius:50%;background:#63D9B5;display:grid;place-items:center;margin:24px auto 0}
 </style>
 </head>
@@ -74,6 +76,13 @@ function readConfig() {
   return null;
 }
 const FIREBASE_CONFIG = readConfig();
+const PREVIEW = /(^#|&)pv=1/.test(location.hash);
+function goBack() {
+  if (history.length > 1) history.back();
+  else { try { window.close(); } catch {} setTimeout(() => { location.href = 'index.html'; }, 250); }
+}
+window.goBack = goBack;
+const pvBar = () => PREVIEW ? '<div class="pvbar"><span>預覽模式（客人看到的畫面）</span><button onclick="goBack()">✕ 關閉預覽</button></div>' : '';
 
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -89,10 +98,10 @@ const dateLabel = s => { const d = parseDs(s); return `${d.getMonth() + 1}/${d.g
 const CHECK = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
 const ARROW = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>';
 const BACK = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>';
-const closed = () => { $('#m').innerHTML = '<div class="center" style="padding-top:26vh"><h1>線上預約尚未開放</h1><p class="muted">請直接聯絡設計師預約，謝謝！</p></div>'; };
+const closed = () => { $('#m').innerHTML = pvBar() + '<div class="center" style="padding-top:26vh"><h1>線上預約尚未開放</h1><p class="muted">請直接聯絡設計師預約，謝謝！</p></div>'; };
 
 if (!FIREBASE_CONFIG) closed();
-else start().catch(e => { $('#m').innerHTML = `<div class="center muted" style="padding-top:30vh">暫時無法載入，請稍後再試<br><small>${esc(e.code || e.message)}</small></div>`; });
+else start().catch(e => { $('#m').innerHTML = pvBar() + `<div class="center muted" style="padding-top:30vh">暫時無法載入，請稍後再試<br><small>${esc(e.code || e.message)}</small></div>`; });
 
 async function start() {
   const [{ initializeApp }, F] = await Promise.all([import(SDK + 'firebase-app.js'), import(SDK + 'firebase-firestore.js')]);
@@ -145,7 +154,7 @@ async function start() {
         <p class="note center">${esc(info.shopName)}・如需更改請直接聯絡設計師</p>${contact()}
         <button class="go center" data-a="again" style="background:var(--soft);color:var(--ink)">再預約一筆</button>`;
     }
-    $('#m').innerHTML = h;
+    $('#m').innerHTML = pvBar() + h;
     ['phone', 'name', 'note'].forEach(k => { const el = $('#' + k); if (el) el.oninput = () => { st[k] = el.value; }; });
   }
   const lineUrl = v => /^https?:/.test(v) ? v : 'https://line.me/R/ti/p/' + encodeURIComponent(v.startsWith('@') ? v : '~' + v);

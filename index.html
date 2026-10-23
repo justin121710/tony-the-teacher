@@ -81,6 +81,9 @@ nav.tabs .plus{width:72px;height:72px;border-radius:26px;background:var(--ink);c
 .tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
 .tile{height:92px;border-radius:22px;background:var(--c);padding:12px;display:flex;flex-direction:column;justify-content:space-between;text-align:left}
 .tile b{font-size:18px;font-weight:900;line-height:1.2;word-break:break-all}.tile small{font-size:12px;font-weight:700}
+.tile.k1{height:104px;padding:10px 12px;align-items:flex-start}
+.tile .k1c{font-size:46px;font-weight:900;line-height:1;letter-spacing:-1px}
+.tile .k1n{font-size:13px;font-weight:700;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
 .tile.on{box-shadow:inset 0 0 0 3px var(--ink)}
 .chips{display:flex;gap:6px;flex-wrap:wrap}
 .chip{height:44px;padding:0 16px;border-radius:22px;background:var(--soft);font-weight:700;font-size:15px;display:inline-flex;align-items:center;position:relative}
@@ -269,6 +272,7 @@ const defaultServices = () => DEFAULT_SERVICES.map(([name, duration, price], i) 
 /* ---------- 狀態 ---------- */
 const S = { settings: null, services: [], customers: [], bookings: [], requests: [] };
 const U = { tab: 'day', more: 'income', date: today(), q: '', month: today().slice(0, 7), showEnded: false };
+try { if (sessionStorage.getItem('tony-return') === 'set') { U.tab = 'more'; U.more = 'set'; sessionStorage.removeItem('tony-return'); } } catch {}
 let backend;
 
 const services = () => [...S.services].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
@@ -704,8 +708,8 @@ function viewSet() {
       <div class="li"><span class="g">客人可預約幾天內</span><select data-chg="num" data-k="bookAheadDays" style="width:auto;background:var(--soft);min-height:44px">${[7, 14, 30, 60, 90].map(n => `<option value="${n}" ${st.bookAheadDays == n ? 'selected' : ''}>${n} 天</option>`).join('')}</select></div></div>
     <h3>客人線上預約</h3>
     ${cloud ? `<div class="list" style="padding:14px 16px"><div style="word-break:break-all;font-size:13px;color:var(--muted);margin-bottom:10px;max-height:4.5em;overflow:hidden">${esc(bookLink())}</div>
-      <div class="acts" style="margin:0"><button class="btn ink" data-act="copylink">複製連結</button><button class="btn" data-act="sharelink" style="background:var(--soft)">分享</button><a class="btn" href="${esc(bookLink())}" target="_blank" rel="noopener" style="background:var(--soft)">預覽</a></div>
-      <a class="big" href="${esc(cardLink())}" target="_blank" rel="noopener" style="margin-top:8px;text-decoration:none">預約 QR 卡（可列印、傳 LINE）</a></div>
+      <div class="acts" style="margin:0"><button class="btn ink" data-act="copylink">複製連結</button><button class="btn" data-act="sharelink" style="background:var(--soft)">分享</button><a onclick="try{sessionStorage.setItem('tony-return','set')}catch(e){}" class="btn" href="${esc(bookLink() + (bookLink().includes('#') ? '&' : '#') + 'pv=1')}" style="background:var(--soft)">預覽</a></div>
+      <a onclick="try{sessionStorage.setItem('tony-return','set')}catch(e){}" class="big" href="${esc(cardLink())}" style="margin-top:8px;text-decoration:none">預約 QR 卡（可列印、傳 LINE）</a></div>
       <div class="list" style="margin-top:8px"><button class="li" data-act="rules"><span class="g"><b>資料庫安全規則</b><small>專案 ${esc(FIREBASE_CONFIG.projectId)}・登入帳號 ${esc(backend.email())}</small></span></button></div>`
       : `<div class="list" style="padding:14px 16px"><p style="margin:0 0 12px">目前是單機版，客人還不能線上預約，資料也只在這支手機。</p><button class="big" data-act="cloudsetup">開啟雲端同步＋線上預約</button></div>`}
     <h3>資料</h3>
@@ -786,7 +790,7 @@ function shiftUI(b, opts = {}) {
 function openNotify(moves) {
   const shop = S.settings.shopName;
   openSheet(`<h1>通知客人</h1><p class="note">逐一點「傳簡訊」，訊息已經寫好。</p>
-    <div class="mv">${moves.map(m => { const tel = m.b.phone.replace(/[^\d+]/g, ''); const msg = `您好，設計師目前進度稍有延誤，您${dayWord(m.b.date)} ${m.from} 的預約將延後至 ${m.to}，造成不便敬請見諒。— ${shop}`;
+    <div class="mv">${moves.map(m => { const tel = m.b.phone.replace(/[^\d+]/g, ''); const msg = `您好，設計師目前進度稍有延誤，您原本 ${m.from} 的預約將延後至 ${m.to} 開始，造成不便敬請見諒。\n\n${bookingInfo(m.b, m.to)}\n\n— ${shop}`;
       return `<div class="row" style="--c:${colorOf(m.b)}"><span class="t num">${m.to}</span><span class="m"><b>${esc(svcNames(m.b))}</b><small>${esc(who(m.b))}</small></span><a class="btn ink" style="min-height:44px" href="sms:${tel}?&body=${encodeURIComponent(msg)}">傳簡訊</a></div>`; }).join('')}</div>
     <button class="btn" data-s="close" style="width:100%">完成</button>`, { close: closeSheet });
 }
@@ -828,7 +832,7 @@ function openForm(init = {}) {
   if (f.date < today() && !ex) f.date = today();
   const tiles = [...activeServices(), ...f.svc.map(lookup).filter(s => s && !activeServices().some(a => a.id === s.id))];
   const body = `<h1>${ex ? '編輯預約' : '做什麼？'}</h1>
-    <div class="tiles" id="f-svc">${tiles.map(s => `<button class="tile" data-s="svc" data-id="${s.id}" style="--c:${s.color || PALETTE[7]}"><b>${esc(s.name)}</b><small>${durText(s.duration)}</small></button>`).join('')}</div>
+    <div class="tiles" id="f-svc">${tiles.map(s => `<button class="tile k1" data-s="svc" data-id="${s.id}" style="--c:${s.color || PALETTE[7]}" aria-label="${esc(s.name)}"><span class="k1c">${esc([...s.name][0] || '')}</span><span class="k1n">${esc(s.name)}・${durText(s.duration)}</span></button>`).join('')}</div>
     <div class="lbl"><h2>什麼時候？</h2><span id="f-sum"></span></div>
     <div class="chips" id="f-days"></div>
     <div class="slots" id="f-slots" style="margin-top:10px"></div>
@@ -901,6 +905,10 @@ function openForm(init = {}) {
   }
 }
 
+function bookingInfo(x, start) {
+  const st = start || x.start, svc = (x.services || []).map(v => v.name).join('＋') || '預約';
+  return `日期：${dateLabel(x.date)}\n時間：${st}–${toHM(toMin(st) + x.duration)}（預計約 ${durText(x.duration)}）\n項目：${svc}\n費用：${money(x.price)}`;
+}
 function contactBtns(phone, msg) {
   if (!phone) return '';
   const tel = phone.replace(/[^\d+]/g, '');
@@ -909,7 +917,7 @@ function contactBtns(phone, msg) {
 function openBooking(id) {
   const b = S.bookings.find(x => x.id === id); if (!b) return;
   const set = st => () => { backend.put('bookings', { ...b, status: st, ...(st === 'done' ? { doneAt: Date.now() } : {}) }); closeSheet(); toast(STATUS[st]); };
-  const msg = `您好，提醒您${dayWord(b.date)} ${b.start} 的預約（${svcNames(b)}），${S.settings.shopName} 期待您的光臨！`;
+  const msg = `您好，這是您的預約資訊：\n\n${bookingInfo(b)}\n\n${S.settings.shopName} 期待您的光臨！`;
   openSheet(`<div class="head-card" style="--c:${colorOf(b)};margin-top:8px"><span class="num" style="font-size:22px;font-weight:800">${dayWord(b.date)} ${b.start} – ${toHM(endOf(b))}</span>
       <span class="svc">${esc(svcNames(b))}</span>${[who(b), b.phone && b.customerName ? b.phone : ''].filter(Boolean).length ? `<div class="tags">${[who(b), b.customerName ? b.phone : ''].filter(Boolean).map(t => `<span class="tag">${esc(t)}</span>`).join('')}</div>` : ''}</div>
     <dl class="kv"><div><dt>金額</dt><dd>${money(b.price)}</dd></div><div><dt>時長</dt><dd>${durText(b.duration)}${b.extra ? `（含順延 ${b.extra} 分）` : ''}</dd></div>
@@ -935,7 +943,7 @@ function openRequests() {
 function openRequest(id) {
   const q = S.requests.find(x => x.id === id); if (!q) return;
   const clash = overlaps(toMin(q.start), toMin(q.start) + q.duration, busyRanges(q.date, q.id));
-  const msgOk = `您好，您${dayWord(q.date)} ${q.start} 的預約已確認，${S.settings.shopName} 期待您的光臨！`;
+  const msgOk = `您好，您的線上預約已確認：\n\n${bookingInfo(q)}\n\n${S.settings.shopName} 期待您的光臨！`;
   openSheet(`<div class="head-card" style="--c:${q.services?.[0]?.color || PALETTE[7]};margin-top:8px"><span class="badge">待確認</span><span class="num" style="font-size:22px;font-weight:800">${dayWord(q.date)} ${q.start} – ${toHM(toMin(q.start) + q.duration)}</span>
       <span class="svc">${esc((q.services || []).map(s => s.name).join('＋'))}</span><div class="tags">${[q.name, q.phone].filter(Boolean).map(t => `<span class="tag">${esc(t)}</span>`).join('')}</div></div>
     <dl class="kv"><div><dt>金額</dt><dd>${money(q.price)}</dd></div>${q.note ? `<div><dt>備註</dt><dd>${esc(q.note)}</dd></div>` : ''}</dl>
