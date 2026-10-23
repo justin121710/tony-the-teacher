@@ -144,11 +144,15 @@ async function handleNew(req, env) {
   let id = '';
   try { id = String(JSON.parse(await req.text()).id || ''); } catch {}
   if (!/^[A-Za-z0-9_-]{6,64}$/.test(id)) return json({ ok: false, error: 'bad id' }, 400);
-  const q = await fsGet(env, 'requests/' + id);
+  let q = await fsGet(env, 'requests/' + id);
+  if (!q) { await new Promise(r => setTimeout(r, 1500)); q = await fsGet(env, 'requests/' + id); }   // 剛寫入時偶爾要等一下
   // 只通知真的存在、仍待確認、且剛送出的預約 → 外人無法用這個網址亂發通知
-  if (!q || q.status !== 'pending' || Math.abs(Date.now() - Number(q.createdAt || 0)) > 10 * 60000) return json({ ok: false, error: 'not found or expired' }, 404);
+  const age = q ? Math.round((Date.now() - Number(q.createdAt || 0)) / 1000) : null;
+  const why = !q ? '資料庫找不到這筆預約' : q.status !== 'pending' ? '狀態不是待確認：' + q.status : Math.abs(age) > 600 ? `送出時間差 ${age} 秒（超過 10 分鐘，檢查手機時間）` : '';
+  if (why) { console.log('[new] 不通知', id, why); return json({ ok: false, error: why }, 404); }
   const shop = await shopName(env);
   const res = await sendAll(env, `新的線上預約：${dateLabel(q.date)} ${q.start} ${svcNames(q)}`, requestText(q, shop));
+  console.log('[new] 已處理', id, JSON.stringify(res));
   return json({ ok: true, ...res });
 }
 async function handleTest(req, env) {
@@ -221,6 +225,7 @@ export default {
       if (req.method === 'GET' && (path === '' || path === '/')) return json({ ok: true, service: 'Tony老師 通知服務' });
       return json({ ok: false, error: 'not found' }, 404);
     } catch (e) {
+      console.log('[error]', path, String(e.message || e));
       return json({ ok: false, error: String(e.message || e) }, 500);
     }
   },
