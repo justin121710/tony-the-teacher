@@ -99,6 +99,10 @@ body.desk #confirm-root .sheet{max-width:420px}
 @keyframes pop{0%{transform:scale(.3) translateY(8px);opacity:0}100%{transform:none;opacity:1}}
 @keyframes fadein{from{opacity:0;transform:translateY(6px)}}
 .chips{display:flex;gap:6px;flex-wrap:wrap}
+.lens{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.len{--hair:#2B2422;--skin:#F1D4BC;--shirt:#E4D7C8;border-radius:20px;background:var(--card);padding:8px 2px 10px;display:flex;flex-direction:column;align-items:center;gap:1px;text-align:center}
+.len b{font-size:15px;font-weight:900}.len small{font-size:12px;color:var(--muted)}
+.len.on{box-shadow:inset 0 0 0 3px var(--ink)}
 .chip{height:44px;padding:0 16px;border-radius:22px;background:var(--soft);font-weight:700;font-size:15px;display:inline-flex;align-items:center;position:relative}
 .chip.on{background:var(--ink);color:#fff}
 .chip input{position:absolute;inset:0;opacity:0;min-height:0;padding:0}
@@ -403,6 +407,22 @@ const hairName = k => (HAIR.find(h => h[0] === k) || [])[1] || '';
 const LEN_DEFAULT = { m: { d: 15, p: 200 }, l: { d: 30, p: 400 }, x: { d: 60, p: 800 } };
 const lenAdd = (s, hl) => (s.len && s.len[hl]) || { d: 0, p: 0 };
 const svcSnap = (s, hl) => ({ id: s.id, name: s.name, duration: s.duration, price: s.price, color: s.color || '', ...(s.len ? { hl: hl || 's' } : {}) });
+// 髮長圖示：胸上人像，y = 頭髮尾端（viewBox 0 8 120 124）
+const HAIR_Y = { s: 60, m: 90, l: 108, x: 126 };
+const hairFig = y => {
+  const w = Math.max(0, y - 86) * .32;   // 過肩後頭髮順著肩膀往外散
+  // 兩側髮束：外緣和後面的頭髮同一條線（不會有斷層）；下巴（約 74）以上貼著臉的外緣，不蓋到臉
+  const bend = y > 80 ? `L41 74L${47 + w * .2} ${y - 3}` : `L41 ${y - 3}`;
+  const side = `M35 46L41 46${bend}Q${38 - w * .3} ${y + 4} ${34 - w} ${y}Z`;
+  const mirror = d => d.replace(/([MLQ ])(-?[\d.]+) (-?[\d.]+)/g, (m, c, x, yy) => `${c}${+(120 - x).toFixed(2)} ${yy}`);
+  return `<path d="M35 50C35 18 85 18 85 50L${86 + w} ${y}Q60 ${y + 7} ${34 - w} ${y}Z" fill="var(--hair)"/>
+    <rect x="53" y="64" width="14" height="30" rx="6" fill="var(--skin)"/>
+    <path d="M6 140C8 108 32 90 60 90S112 108 114 140Z" fill="var(--shirt)"/>
+    <ellipse cx="60" cy="50" rx="19" ry="22" fill="var(--skin)"/>
+    <path d="M39 46C40 24 80 24 81 46C73 37 52 35 39 46Z" fill="var(--hair)"/>
+    ${y > 64 ? `<path d="${side}" fill="var(--hair)"/><path d="${mirror(side)}" fill="var(--hair)"/>` : ''}`;
+};
+const hairIcon = k => `<svg width="56" height="58" viewBox="0 8 120 124" aria-hidden="true">${hairFig(HAIR_Y[k])}</svg>`;
 const svcLabel = s => s.name + (s.hl ? '（' + hairName(s.hl) + '）' : '');
 const hairOf = list => (list || []).find(s => s.hl)?.hl || '';
 const DEFAULT_SERVICES = [['剪髮', 60, 500], ['洗髮', 30, 300], ['燙髮', 150, 2500, true], ['染髮', 120, 2000, true], ['護髮', 45, 800, true]];
@@ -1215,7 +1235,7 @@ function openForm(init = {}) {
   const tiles = [...activeServices(), ...f.svc.map(lookup).filter(s => s && !activeServices().some(a => a.id === s.id))];
   const body = `<h1 class="ftitle" id="f-title">${ex ? '編輯預約' : '做什麼？'}</h1>
     <div class="tiles" id="f-svc">${tiles.map(s => `<button class="tile k1" data-s="svc" data-id="${s.id}" style="--c:${s.color || PALETTE[7]}" aria-label="${esc(s.name)}"><span class="k1c">${esc([...s.name][0] || '')}</span><span class="k1n">${esc(s.name)}・${hmm(s.duration)}</span></button>`).join('')}</div>
-    <div id="f-lenbox" hidden><div class="lbl"><h2>頭髮多長？</h2></div><div class="chips" id="f-len"></div></div>
+    <div id="f-lenbox" hidden><div class="lbl"><h2>頭髮多長？</h2></div><div class="lens" id="f-len"></div><p class="note" style="font-size:12px;margin:6px 4px 0">加時、加價依「服務項目」裡的設定</p></div>
     <div class="lbl"><h2>什麼時候？</h2><span id="f-sum"></span></div>
     <div class="chips" id="f-days"></div>
     <div class="slots" id="f-slots" style="margin-top:10px"></div>
@@ -1275,7 +1295,7 @@ function openForm(init = {}) {
     if (!f.priceT) f.price = chosen.reduce((a, s) => a + s.price + lenAdd(s, f.hl).p, 0);
     $('#f-dur').value = f.dur || ''; $('#f-price').value = f.price || '';
     $('#f-lenbox').hidden = !chosen.some(s => s.len);
-    $('#f-len').innerHTML = HAIR.map(([k, n, h]) => `<button class="chip ${k === f.hl ? 'on' : ''}" data-s="len" data-k="${k}">${n}<small style="font-weight:500;margin-left:5px;opacity:.7">${h}</small></button>`).join('');
+    $('#f-len').innerHTML = HAIR.map(([k, n, h]) => `<button class="len ${k === f.hl ? 'on' : ''}" data-s="len" data-k="${k}" aria-pressed="${k === f.hl}">${hairIcon(k)}<b>${n}</b><small>${h}</small></button>`).join('');
     document.querySelectorAll('#f-svc .tile').forEach(c => c.classList.toggle('on', f.svc.includes(c.dataset.id)));
     title(chosen);
     slots();

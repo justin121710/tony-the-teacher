@@ -67,9 +67,9 @@ input:focus,textarea:focus{border-color:var(--ink)}
 .editbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:12px 0 -4px;padding:10px 10px 10px 14px;border-radius:18px;background:#FFF1B8;font-size:14px}
 .editbar button{background:#fff;color:var(--ink)}
 .lens{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
-.len{border-radius:20px;background:var(--card);padding:10px 4px 12px;display:flex;flex-direction:column;align-items:center;gap:2px;text-align:center}
-.len b{font-size:16px;font-weight:900}.len small{font-size:12px;color:var(--muted)}
-.len.on{background:var(--ink);color:#fff}.len.on small{color:#D9D3CC}
+.len{--hair:#2B2422;--skin:#F1D4BC;--shirt:#E4D7C8;border-radius:20px;background:var(--card);padding:8px 2px 10px;display:flex;flex-direction:column;align-items:center;gap:1px;text-align:center}
+.len b{font-size:15px;font-weight:900}.len small{font-size:12px;color:var(--muted)}
+.len.on{box-shadow:inset 0 0 0 3px var(--ink)}
 .ok{width:64px;height:64px;border-radius:50%;background:#63D9B5;display:grid;place-items:center;margin:24px auto 0}
 </style>
 </head>
@@ -111,8 +111,22 @@ const BACK = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke
 const HAIR = [['s', '短髮', '耳上'], ['m', '中長', '到肩'], ['l', '長髮', '過肩'], ['x', '超長', '胸下']];
 const hairName = k => (HAIR.find(h => h[0] === k) || [])[1] || '';
 const lenAdd = (s, hl) => (s.len && s.len[hl]) || { d: 0, p: 0 };
-const hairSvg = k => { const y = { s: 19, m: 31, l: 41, x: 52 }[k];
-  return `<svg width="44" height="52" viewBox="0 0 48 56" aria-hidden="true"><path d="M6 56c2-11 9-16 18-16s16 5 18 16z" fill="currentColor" opacity=".2"/><path d="M11 ${y}V19a13 13 0 0 1 26 0V${y}z" fill="currentColor"/><circle cx="24" cy="21" r="9" fill="#F1D4BC"/></svg>`; };
+// 髮長圖示：胸上人像，y = 頭髮尾端（viewBox 0 8 120 124）
+const HAIR_Y = { s: 60, m: 90, l: 108, x: 126 };
+const hairFig = y => {
+  const w = Math.max(0, y - 86) * .32;   // 過肩後頭髮順著肩膀往外散
+  // 兩側髮束：外緣和後面的頭髮同一條線（不會有斷層）；下巴（約 74）以上貼著臉的外緣，不蓋到臉
+  const bend = y > 80 ? `L41 74L${47 + w * .2} ${y - 3}` : `L41 ${y - 3}`;
+  const side = `M35 46L41 46${bend}Q${38 - w * .3} ${y + 4} ${34 - w} ${y}Z`;
+  const mirror = d => d.replace(/([MLQ ])(-?[\d.]+) (-?[\d.]+)/g, (m, c, x, yy) => `${c}${+(120 - x).toFixed(2)} ${yy}`);
+  return `<path d="M35 50C35 18 85 18 85 50L${86 + w} ${y}Q60 ${y + 7} ${34 - w} ${y}Z" fill="var(--hair)"/>
+    <rect x="53" y="64" width="14" height="30" rx="6" fill="var(--skin)"/>
+    <path d="M6 140C8 108 32 90 60 90S112 108 114 140Z" fill="var(--shirt)"/>
+    <ellipse cx="60" cy="50" rx="19" ry="22" fill="var(--skin)"/>
+    <path d="M39 46C40 24 80 24 81 46C73 37 52 35 39 46Z" fill="var(--hair)"/>
+    ${y > 64 ? `<path d="${side}" fill="var(--hair)"/><path d="${mirror(side)}" fill="var(--hair)"/>` : ''}`;
+};
+const hairIcon = k => `<svg width="56" height="58" viewBox="0 8 120 124" aria-hidden="true">${hairFig(HAIR_Y[k])}</svg>`;
 const closed = () => { $('#m').innerHTML = pvBar() + '<div class="center" style="padding-top:26vh"><h1>線上預約尚未開放</h1><p class="muted">請直接聯絡設計師預約，謝謝！</p></div>'; };
 const randKey = () => { const a = new Uint8Array(18); crypto.getRandomValues(a); return Array.from(a, b => b.toString(36).padStart(2, '0')).join('').slice(0, 32); };
 
@@ -195,8 +209,8 @@ async function start() {
         + `<h1>${st.edit ? '要改成什麼？' : '想做什麼？'}</h1><div class="tiles">${info.services.map(s => `<button class="tile ${st.svc.includes(s.id) ? 'on' : ''}" data-a="svc" data-id="${s.id}" style="--c:${s.color || '#D7C3A8'}" aria-pressed="${st.svc.includes(s.id)}">
         <span class="ck">${CHECK}</span><b>${esc(s.name)}</b><span><span class="p num">${money(s.price)}${s.len ? '<small> 起</small>' : ''}</span><br><small>約 ${durText(s.duration)}${s.len ? '・依髮長' : ''}</small></span></button>`).join('')}</div>
         <p class="note">可以選很多項</p>
-        ${needLen() ? `<h2>頭髮多長？</h2><div class="lens">${HAIR.map(([k, n, h]) => `<button class="len ${k === st.hl ? 'on' : ''}" data-a="len" data-k="${k}" aria-pressed="${k === st.hl}">${hairSvg(k)}<b>${n}</b><small>${h}</small></button>`).join('')}</div>
-        <p class="note">標示「依髮長」的服務，會依頭髮長度調整時間與價格</p>` : ''}${contact()}<div class="grow"></div>
+        ${needLen() ? `<h2>頭髮多長？</h2><div class="lens">${HAIR.map(([k, n, h]) => `<button class="len ${k === st.hl ? 'on' : ''}" data-a="len" data-k="${k}" aria-pressed="${k === st.hl}">${hairIcon(k)}<b>${n}</b><small>${h}</small></button>`).join('')}</div>
+        <p class="note" style="font-size:12px;margin-top:8px">依髮長增加的時間與費用由設計師設定，實際以現場為準</p>` : ''}${contact()}<div class="grow"></div>
         <button class="go" data-a="next" ${ready() ? '' : 'disabled'}><span style="text-align:left">${ready() ? `<span class="num">${money(price())}</span><small>${durText(dur())}</small>` : st.svc.length ? '請選擇頭髮長度' : '請選擇服務'}</span><span style="display:flex;align-items:center;gap:6px">選時間${ARROW}</span></button>`;
     } else if (st.step === 2) {
       h += editBar() + `<h1>哪天方便？</h1>${chips()}
