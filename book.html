@@ -66,6 +66,10 @@ input:focus,textarea:focus{border-color:var(--ink)}
 .mrow button,.editbar button{min-height:42px;padding:0 16px;border-radius:14px;background:var(--ink);color:#fff;font-weight:900;flex:none}
 .editbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:12px 0 -4px;padding:10px 10px 10px 14px;border-radius:18px;background:#FFF1B8;font-size:14px}
 .editbar button{background:#fff;color:var(--ink)}
+.lens{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.len{--hair:#2B2422;--skin:#F1D4BC;--shirt:#E4D7C8;border-radius:20px;background:var(--card);padding:8px 2px 10px;display:flex;flex-direction:column;align-items:center;gap:1px;text-align:center}
+.len b{font-size:15px;font-weight:900}.len small{font-size:12px;color:var(--muted)}
+.len.on{box-shadow:inset 0 0 0 3px var(--ink)}
 .ok{width:64px;height:64px;border-radius:50%;background:#63D9B5;display:grid;place-items:center;margin:24px auto 0}
 </style>
 </head>
@@ -103,6 +107,26 @@ const dateLabel = s => { const d = parseDs(s); return `${d.getMonth() + 1}/${d.g
 const CHECK = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
 const ARROW = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>';
 const BACK = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>';
+/* 髮長：短髮不加；中長以上依服務設定加時加價 */
+const HAIR = [['s', '短髮', '耳上'], ['m', '中長', '到肩'], ['l', '長髮', '過肩'], ['x', '超長', '胸下']];
+const hairName = k => (HAIR.find(h => h[0] === k) || [])[1] || '';
+const lenAdd = (s, hl) => (s.len && s.len[hl]) || { d: 0, p: 0 };
+// 髮長圖示：胸上人像，y = 頭髮尾端（viewBox 0 8 120 124）
+const HAIR_Y = { s: 60, m: 90, l: 108, x: 126 };
+const hairFig = y => {
+  const w = Math.max(0, y - 86) * .32;   // 過肩後頭髮順著肩膀往外散
+  // 兩側髮束：外緣和後面的頭髮同一條線（不會有斷層）；下巴（約 74）以上貼著臉的外緣，不蓋到臉
+  const bend = y > 80 ? `L41 74L${47 + w * .2} ${y - 3}` : `L41 ${y - 3}`;
+  const side = `M35 46L41 46${bend}Q${38 - w * .3} ${y + 4} ${34 - w} ${y}Z`;
+  const mirror = d => d.replace(/([MLQ ])(-?[\d.]+) (-?[\d.]+)/g, (m, c, x, yy) => `${c}${+(120 - x).toFixed(2)} ${yy}`);
+  return `<path d="M35 50C35 18 85 18 85 50L${86 + w} ${y}Q60 ${y + 7} ${34 - w} ${y}Z" fill="var(--hair)"/>
+    <rect x="53" y="64" width="14" height="30" rx="6" fill="var(--skin)"/>
+    <path d="M6 140C8 108 32 90 60 90S112 108 114 140Z" fill="var(--shirt)"/>
+    <ellipse cx="60" cy="50" rx="19" ry="22" fill="var(--skin)"/>
+    <path d="M39 46C40 24 80 24 81 46C73 37 52 35 39 46Z" fill="var(--hair)"/>
+    ${y > 64 ? `<path d="${side}" fill="var(--hair)"/><path d="${mirror(side)}" fill="var(--hair)"/>` : ''}`;
+};
+const hairIcon = k => `<svg width="56" height="58" viewBox="0 8 120 124" aria-hidden="true">${hairFig(HAIR_Y[k])}</svg>`;
 const closed = () => { $('#m').innerHTML = pvBar() + '<div class="center" style="padding-top:26vh"><h1>線上預約尚未開放</h1><p class="muted">請直接聯絡設計師預約，謝謝！</p></div>'; };
 const randKey = () => { const a = new Uint8Array(18); crypto.getRandomValues(a); return Array.from(a, b => b.toString(36).padStart(2, '0')).join('').slice(0, 32); };
 
@@ -157,11 +181,15 @@ async function start() {
   const notifyUrl = (notifyDoc && notifyDoc.url) || info.notifyUrl || '';
   document.title = info.shopName + '｜線上預約';
   const st = { step: 1, svc: [], date: null, start: null, busy: {}, loading: {}, name: '', phone: '', note: '', sending: false, edit: null, done: null };
-  try { const me = JSON.parse(localStorage.getItem('tony-cust')); if (me) { st.name = me.name || ''; st.phone = me.phone || ''; } } catch {}
+  try { const me = JSON.parse(localStorage.getItem('tony-cust')); if (me) { st.name = me.name || ''; st.phone = me.phone || ''; st.hl = me.hl || null; } } catch {}
   const svc = id => info.services.find(s => s.id === id);
   const chosen = () => st.svc.map(svc).filter(Boolean);
-  const dur = () => chosen().reduce((a, s) => a + s.duration, 0);
-  const price = () => chosen().reduce((a, s) => a + s.price, 0);
+  const needLen = () => chosen().some(s => s.len);
+  const hl = () => needLen() ? st.hl || 's' : '';
+  const dur = () => chosen().reduce((a, s) => a + s.duration + lenAdd(s, hl()).d, 0);
+  const price = () => chosen().reduce((a, s) => a + s.price + lenAdd(s, hl()).p, 0);
+  const label = s => s.name + (s.len && hl() ? '（' + hairName(hl()) + '）' : '');
+  const ready = () => st.svc.length && (!needLen() || st.hl);
   const color = () => chosen()[0]?.color || '#D7C3A8';
   const hoursOf = date => { if ((info.holidays || []).includes(date)) return null; const h = info.hours?.[parseDs(date).getDay()]; return h && h.open ? [toMin(h.start), toMin(h.end)] : null; };
   const t0 = new Date(), todayS = ds(t0), days = [];
@@ -170,7 +198,7 @@ async function start() {
 
   const head = () => `<div class="top">${st.step > 1 ? `<button class="back" data-a="back" aria-label="上一步">${BACK}</button>` : `<span class="shop" style="display:flex;align-items:center;gap:8px"><img src="icons/mark.png" alt="" width="30" height="30">${esc(info.shopName)}</span>`}
     <div class="dots" aria-label="第 ${st.step} 步，共 3 步">${[1, 2, 3].map(i => `<i class="${i < st.step ? 'on' : i === st.step ? 'cur' : ''}"></i>`).join('')}</div></div>`;
-  const chips = () => `<div class="chosen">${chosen().map(s => `<span style="--c:${s.color || '#D7C3A8'}">${esc(s.name)}</span>`).join('')}<em>約 ${durText(dur())}・${money(price())}</em></div>`;
+  const chips = () => `<div class="chosen">${chosen().map(s => `<span style="--c:${s.color || '#D7C3A8'}">${esc(label(s))}</span>`).join('')}<em>約 ${durText(dur())}・${money(price())}</em></div>`;
   const editBar = () => st.edit ? `<div class="editbar"><span>正在修改：<b>${esc(st.edit.prevText)}</b></span><button data-a="canceledit">取消修改</button></div>` : '';
 
   function render() {
@@ -179,9 +207,11 @@ async function start() {
       const mine = st.edit ? [] : loadMine();
       h += editBar() + (mine.length ? `<div class="mine">${mine.map((x, i) => `<div class="mrow"><span><small>你已預約</small><b class="num">${esc(summary(x))}</b></span><button data-a="edit" data-i="${i}">修改</button></div>`).join('')}</div>` : '')
         + `<h1>${st.edit ? '要改成什麼？' : '想做什麼？'}</h1><div class="tiles">${info.services.map(s => `<button class="tile ${st.svc.includes(s.id) ? 'on' : ''}" data-a="svc" data-id="${s.id}" style="--c:${s.color || '#D7C3A8'}" aria-pressed="${st.svc.includes(s.id)}">
-        <span class="ck">${CHECK}</span><b>${esc(s.name)}</b><span><span class="p num">${money(s.price)}</span><br><small>約 ${durText(s.duration)}</small></span></button>`).join('')}</div>
-        <p class="note">可以選很多項</p>${contact()}<div class="grow"></div>
-        <button class="go" data-a="next" ${st.svc.length ? '' : 'disabled'}><span style="text-align:left">${st.svc.length ? `<span class="num">${money(price())}</span><small>${durText(dur())}</small>` : '請選擇服務'}</span><span style="display:flex;align-items:center;gap:6px">選時間${ARROW}</span></button>`;
+        <span class="ck">${CHECK}</span><b>${esc(s.name)}</b><span><span class="p num">${money(s.price)}${s.len ? '<small> 起</small>' : ''}</span><br><small>約 ${durText(s.duration)}${s.len ? '・依髮長' : ''}</small></span></button>`).join('')}</div>
+        <p class="note">可以選很多項</p>
+        ${needLen() ? `<h2>頭髮多長？</h2><div class="lens">${HAIR.map(([k, n, h]) => `<button class="len ${k === st.hl ? 'on' : ''}" data-a="len" data-k="${k}" aria-pressed="${k === st.hl}">${hairIcon(k)}<b>${n}</b><small>${h}</small></button>`).join('')}</div>
+        <p class="note" style="font-size:12px;margin-top:8px">依髮長增加的時間與費用由設計師設定，實際以現場為準</p>` : ''}${contact()}<div class="grow"></div>
+        <button class="go" data-a="next" ${ready() ? '' : 'disabled'}><span style="text-align:left">${ready() ? `<span class="num">${money(price())}</span><small>${durText(dur())}</small>` : st.svc.length ? '請選擇頭髮長度' : '請選擇服務'}</span><span style="display:flex;align-items:center;gap:6px">選時間${ARROW}</span></button>`;
     } else if (st.step === 2) {
       h += editBar() + `<h1>哪天方便？</h1>${chips()}
         <div class="dates">${days.map(d => { const x = parseDs(d), open = hoursOf(d); return `<button class="date ${d === st.date ? 'on' : ''}" data-a="date" data-d="${d}" ${open ? '' : 'disabled'}><small>${open ? (d === todayS ? '今天' : '週' + WD[x.getDay()]) : '公休'}</small><b class="num">${x.getDate()}</b><small>${x.getMonth() + 1}月</small></button>`; }).join('')}</div>
@@ -190,7 +220,7 @@ async function start() {
         <button class="go" data-a="next" ${st.start != null ? '' : 'disabled'}><span class="num">${st.start != null ? dateLabel(st.date) + ' ' + toHM(st.start) : '請選擇時間'}</span><span style="display:flex;align-items:center;gap:6px">下一步${ARROW}</span></button>`;
     } else if (st.step === 3) {
       h += editBar() + `<h1>${st.edit ? '確認修改' : '留個電話就好'}</h1>
-        <button class="sum" data-a="back" style="--c:${color()}"><span class="when num">${dateLabel(st.date)} ${toHM(st.start)}</span><span class="tags">${chosen().map(s => `<span>${esc(s.name)}</span>`).join('')}<em style="font-style:normal;font-weight:700;font-size:14px">約 ${durText(dur())}・${money(price())}</em></span></button>
+        <button class="sum" data-a="back" style="--c:${color()}"><span class="when num">${dateLabel(st.date)} ${toHM(st.start)}</span><span class="tags">${chosen().map(s => `<span>${esc(label(s))}</span>`).join('')}<em style="font-style:normal;font-weight:700;font-size:14px">約 ${durText(dur())}・${money(price())}</em></span></button>
         <label><span>手機號碼</span><input id="phone" type="tel" inputmode="tel" autocomplete="tel" maxlength="15" class="num" value="${esc(st.phone)}"></label>
         <label><span style="color:var(--muted)">怎麼稱呼（選填）</span><input id="name" autocomplete="name" maxlength="30" placeholder="例如：王小姐" value="${esc(st.name)}" style="font-size:17px;height:56px"></label>
         <label><span style="color:var(--muted)">備註（選填）</span><textarea id="note" rows="2" maxlength="200" placeholder="例如：髮長、想要的造型">${esc(st.note)}</textarea></label>
@@ -247,13 +277,14 @@ async function start() {
   const prefetch = () => days.filter(hoursOf).slice(0, 7).forEach(d => loadBusy(d));
   function startEdit(x) {
     st.edit = { root: x.root, key: x.key, prevText: summary(x), prev: { date: x.date, s: toMin(x.start), e: toMin(x.start) + x.duration } };
-    Object.assign(st, { step: 1, svc: (x.svc || []).filter(svc), date: x.date, start: toMin(x.start), name: x.name || st.name, phone: x.phone || st.phone, note: x.note || '', sending: false, busy: {}, loading: {} });
+    Object.assign(st, { step: 1, svc: (x.svc || []).filter(svc), hl: x.hl || st.hl, date: x.date, start: toMin(x.start), name: x.name || st.name, phone: x.phone || st.phone, note: x.note || '', sending: false, busy: {}, loading: {} });
     window.scrollTo(0, 0); render();
   }
   $('#m').onclick = async e => {
     const t = e.target.closest('[data-a]'); if (!t || t.disabled) return;
     const a = t.dataset.a;
     if (a === 'svc') { const id = t.dataset.id; st.svc = st.svc.includes(id) ? st.svc.filter(x => x !== id) : [...st.svc, id]; st.start = null; render(); }
+    if (a === 'len') { st.hl = t.dataset.k; st.start = null; render(); }
     if (a === 'next') { st.step++; window.scrollTo(0, 0); render(); if (st.step === 2) { prefetch(); if (st.date) loadBusy(st.date); } }
     if (a === 'again') { Object.assign(st, { step: 1, svc: [], date: null, start: null, busy: {}, loading: {}, note: '', sending: false, edit: null, done: null }); render(); }
     if (a === 'back') { st.step = Math.max(1, st.step - 1); render(); }
@@ -277,7 +308,7 @@ async function start() {
         const holdId = await addDoc('holds', { date: st.date, s: s0, e: e0, createdAt: Date.now() });
         const key = st.edit ? st.edit.key : randKey();
         const base = { date: st.date, start: toHM(st.start), duration: dur(), price: price(),
-          services: chosen().map(s => ({ id: s.id, name: s.name, duration: s.duration, price: s.price, color: s.color || '' })),
+          services: chosen().map(s => ({ id: s.id, name: s.name, duration: s.duration, price: s.price, color: s.color || '', ...(s.len ? { hl: hl() } : {}) })),
           name: st.name.trim(), phone, note: st.note.trim(), status: 'pending', createdAt: Date.now(), holdId };
         const extra = st.edit ? { editKey: key, editOf: st.edit.root, prevText: st.edit.prevText.slice(0, 80) } : { editKey: key };
         let id, editable = true;
@@ -288,9 +319,9 @@ async function start() {
           editable = false;
           id = await addDoc('requests', { ...base, note: (st.edit ? `【修改】原本 ${st.edit.prevText}。` : '') + base.note });
         }
-        try { localStorage.setItem('tony-cust', JSON.stringify({ name: st.name.trim(), phone })); } catch {}
+        try { localStorage.setItem('tony-cust', JSON.stringify({ name: st.name.trim(), phone, hl: st.hl || '' })); } catch {}
         const root = st.edit ? st.edit.root : id;
-        const rec = { root, last: id, key: editable ? key : '', date: st.date, start: toHM(st.start), duration: dur(), svc: [...st.svc], svcNames: chosen().map(s => s.name), name: st.name.trim(), phone, note: st.note.trim(), at: Date.now() };
+        const rec = { root, last: id, key: editable ? key : '', date: st.date, start: toHM(st.start), duration: dur(), svc: [...st.svc], hl: hl(), svcNames: chosen().map(label), name: st.name.trim(), phone, note: st.note.trim(), at: Date.now() };
         saveMine([...loadMine().filter(m => m.root !== root), ...(editable ? [rec] : [])]);
         if (/^https:\/\//.test(notifyUrl)) fetch(notifyUrl.replace(/\/+$/, '') + '/new', { method: 'POST', body: JSON.stringify({ id }), headers: { 'Content-Type': 'text/plain' }, keepalive: true }).catch(() => {});
         st.done = { ...rec, color: color(), edited: !!st.edit };

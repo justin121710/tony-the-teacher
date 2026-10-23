@@ -37,7 +37,8 @@ const money = n => '$' + Math.round(Number(n) || 0).toLocaleString('en-US');
 const durText = m => m >= 60 ? Math.floor(m / 60) + ' 小時' + (m % 60 ? ' ' + (m % 60) + ' 分' : '') : m + ' 分';
 const taipeiToday = () => new Date(Date.now() + TZ_OFFSET).toISOString().slice(0, 10);
 const dateLabel = s => { const [y, m, d] = s.split('-').map(Number); const wd = new Date(Date.UTC(y, m - 1, d)).getUTCDay(); return `${m}/${d}（${WD[wd]}）`; };
-const svcNames = x => (x.services || []).map(s => s.name).join('＋') || '預約';
+const HAIR = { s: '短髮', m: '中長', l: '長髮', x: '超長' };
+const svcNames = x => (x.services || []).map(s => s.name + (HAIR[s.hl] ? '（' + HAIR[s.hl] + '）' : '')).join('＋') || '預約';
 
 /* ---------- Firebase（用唯讀的通知機器人帳號） ---------- */
 let tokenCache = { token: '', exp: 0 };
