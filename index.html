@@ -397,8 +397,16 @@ const DEFAULT_SETTINGS = {
     4: { open: true, start: '10:00', end: '20:00' }, 5: { open: true, start: '10:00', end: '20:00' },
     6: { open: true, start: '10:00', end: '19:00' } }
 };
-const DEFAULT_SERVICES = [['剪髮', 60, 500], ['洗髮', 30, 300], ['燙髮', 150, 2500], ['染髮', 120, 2000], ['護髮', 45, 800]];
-const defaultServices = () => DEFAULT_SERVICES.map(([name, duration, price], i) => ({ id: 's' + (i + 1), name, duration, price, color: PALETTE[i], active: true, order: i }));
+// 髮長：短髮不加；中長以上依服務設定加時加價（服務的 len 為空 = 不分髮長）
+const HAIR = [['s', '短髮', '耳上'], ['m', '中長', '到肩'], ['l', '長髮', '過肩'], ['x', '超長', '胸下']];
+const hairName = k => (HAIR.find(h => h[0] === k) || [])[1] || '';
+const LEN_DEFAULT = { m: { d: 15, p: 200 }, l: { d: 30, p: 400 }, x: { d: 60, p: 800 } };
+const lenAdd = (s, hl) => (s.len && s.len[hl]) || { d: 0, p: 0 };
+const svcSnap = (s, hl) => ({ id: s.id, name: s.name, duration: s.duration, price: s.price, color: s.color || '', ...(s.len ? { hl: hl || 's' } : {}) });
+const svcLabel = s => s.name + (s.hl ? '（' + hairName(s.hl) + '）' : '');
+const hairOf = list => (list || []).find(s => s.hl)?.hl || '';
+const DEFAULT_SERVICES = [['剪髮', 60, 500], ['洗髮', 30, 300], ['燙髮', 150, 2500, true], ['染髮', 120, 2000, true], ['護髮', 45, 800, true]];
+const defaultServices = () => DEFAULT_SERVICES.map(([name, duration, price, len], i) => ({ id: 's' + (i + 1), name, duration, price, color: PALETTE[i], active: true, order: i, ...(len ? { len: clean(LEN_DEFAULT) } : {}) }));
 
 /* ---------- 狀態 ---------- */
 const S = { settings: null, services: [], customers: [], bookings: [], requests: [] };
@@ -408,7 +416,7 @@ let backend;
 
 const services = () => [...S.services].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 const activeServices = () => services().filter(s => s.active !== false);
-const svcNames = b => (b.services || []).map(s => s.name).join('＋') || '預約';
+const svcNames = b => (b.services || []).map(svcLabel).join('＋') || '預約';
 const colorOf = b => { const s = b.services?.[0]; return (s && (S.services.find(x => x.id === s.id)?.color || s.color)) || PALETTE[7]; };
 const who = b => b.customerName || (b.phone ? '尾號 ' + b.phone.replace(/\D/g, '').slice(-3) : '');
 const endOf = b => toMin(b.start) + b.duration;
@@ -431,11 +439,12 @@ function freeStarts(date, dur, excludeId) {
   for (let s = h[0]; s + dur <= h[1]; s += step) { if (s <= t) continue; if (overlaps(s, s + dur, busy)) continue; out.push(s); }
   return out;
 }
-function ensureCustomer(name, phone, cid) {
+function ensureCustomer(name, phone, cid, hl) {
   if (!name && !phone && !cid) return null;
   let c = (cid && S.customers.find(x => x.id === cid)) || (phone && S.customers.find(x => x.phone === phone)) || (!phone && name && S.customers.find(x => x.name === name));
-  if (!c) { c = { id: uid(), name: name || '', phone: phone || '', note: '', createdAt: Date.now() }; backend.put('customers', c); }
-  else if ((name && c.name !== name) || (phone && c.phone !== phone)) { c = { ...c, name: name || c.name, phone: phone || c.phone }; backend.put('customers', c); }
+  const hair = hl ? { hairLen: hl } : {};
+  if (!c) { c = { id: uid(), name: name || '', phone: phone || '', note: '', ...hair, createdAt: Date.now() }; backend.put('customers', c); }
+  else if ((name && c.name !== name) || (phone && c.phone !== phone) || (hl && c.hairLen !== hl)) { c = { ...c, name: name || c.name, phone: phone || c.phone, ...hair }; backend.put('customers', c); }
   return c;
 }
 const todayBooked = () => S.bookings.filter(b => b.date === today() && b.status === 'booked').sort(byStart);
@@ -478,7 +487,7 @@ async function cloudBackend() {
     if (!S.settings) return; const st = S.settings;
     F.setDoc(F.doc(db, 'public', 'info'), clean({ shopName: st.shopName, shopPhone: st.shopPhone || '', shopLine: st.shopLine || '', shopAddress: st.shopAddress || '', notifyUrl: st.notifyUrl || '',
       slotStep: st.slotStep, bookAheadDays: st.bookAheadDays, holidays: st.holidays, hours: st.hours,
-      services: activeServices().map(s => ({ id: s.id, name: s.name, duration: s.duration, price: s.price, color: s.color || '' })) })).catch(fail);
+      services: activeServices().map(s => ({ id: s.id, name: s.name, duration: s.duration, price: s.price, color: s.color || '', ...(s.len ? { len: s.len } : {}) })) })).catch(fail);
     // 通知網址另外存一份：舊版 APP 改寫 public/info 時不會把它洗掉
     F.setDoc(F.doc(db, 'public', 'notify'), { url: (st.notifyUrl || '').trim() }).catch(fail);
   }, 800); };
@@ -799,7 +808,7 @@ function reqLabel(q) { return !q.editOf ? '待確認' : editTarget(q) ? '修改�
 function reqRow(q, withDate) {
   return `<button class="row req" data-act="req" data-id="${q.id}" style="--c:${q.services?.[0]?.color || PALETTE[7]}">
     <span class="t num">${q.start}</span>
-    <span class="m"><b>${esc((q.services || []).map(s => s.name).join('＋'))}</b><small>${withDate ? dayWord(q.date) + '・' : ''}${reqLabel(q)}</small></span>
+    <span class="m"><b>${esc(svcNames(q))}</b><small>${withDate ? dayWord(q.date) + '・' : ''}${reqLabel(q)}</small></span>
     <span class="r">${money(q.price)}</span></button>`;
 }
 const gapHtml = (a, b) => `<button class="gap" data-act="new" data-start="${a}"><span class="num">${toHM(a)}</span><span class="g">空檔 ${durText(b - a)}</span><span class="p">+</span></button>`;
@@ -959,7 +968,7 @@ function viewCal() {
       const x = v.b || v.q, ht = Math.max(20, (v.e - v.s) * CAL_PX - 2), tiny = ht < 44;
       const pos = `top:${P(v.s) + 1}px;height:${ht}px;left:calc(${v.lane / v.n * 100}% + 3px);width:calc(${100 / v.n}% - 6px)`;
       const head = (name) => `<b><span class="num">${x.start}</span> ${esc(name)}</b>`, end = `<small class="end num">至 ${toHM(v.e)}</small>`;
-      if (v.q) { c += `<button class="ev req ${tiny ? 'tiny' : ''}" data-act="req" data-id="${x.id}" style="${pos}">${head((x.services || []).map(s => s.name).join('＋'))}${end}<small>${reqLabel(x)}</small></button>`; return; }
+      if (v.q) { c += `<button class="ev req ${tiny ? 'tiny' : ''}" data-act="req" data-id="${x.id}" style="${pos}">${head(svcNames(x))}${end}<small>${reqLabel(x)}</small></button>`; return; }
       const due = x.status === 'booked' && (d < t || (d === t && v.e <= n));
       const sub = x.status !== 'booked' ? STATUS[x.status] : due ? '未按完成' : who(x) + (x.source === 'online' ? '・線上' : '');
       c += `<button class="ev ${x.status !== 'booked' ? 'past' : ''} ${tiny ? 'tiny' : ''}" data-act="bk" data-id="${x.id}" style="${pos};--c:${colorOf(x)}" title="${esc(x.start + '–' + toHM(v.e) + ' ' + svcNames(x) + (who(x) ? '・' + who(x) : ''))}">
@@ -1041,7 +1050,7 @@ function viewSet() {
   let canNotify = false; try { canNotify = 'Notification' in window && Notification.permission === 'default'; } catch {}
   return `<h3>服務項目</h3>
     <div class="list" id="svc-list">${services().map(s => `<div class="li svc-row" data-id="${s.id}" style="--c:${s.color || PALETTE[7]}"><span class="dot"></span>
-      <button class="g" data-act="svc" data-id="${s.id}"><b>${esc(s.name)}</b>${s.active === false ? '（停用）' : ''}<small>${durText(s.duration)}・${money(s.price)}</small></button>
+      <button class="g" data-act="svc" data-id="${s.id}"><b>${esc(s.name)}</b>${s.active === false ? '（停用）' : ''}<small>${durText(s.duration)}・${money(s.price)}${s.len ? '・依髮長加價' : ''}</small></button>
       <span class="handle" data-drag="${s.id}" role="button" aria-label="按住拖曳調整順序"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M5 8h14M5 12h14M5 16h14"/></svg></span></div>`).join('')}
       <button class="li" data-act="svc" style="font-weight:900">＋ 新增服務項目</button></div>
     <h3>超時提醒</h3>
@@ -1199,12 +1208,14 @@ function openForm(init = {}) {
   const lookup = id => S.services.find(s => s.id === id) || snap[id];
   const f = { id: ex?.id, date: ex?.date || init.date || U.date, start: ex ? toMin(ex.start) : (init.start ?? null),
     svc: ex ? ex.services.map(s => s.id) : (init.serviceIds || []).filter(lookup), customerId: ex?.customerId || init.customerId || null,
-    dur: ex?.duration ?? 0, price: ex?.price ?? 0, durT: !!ex, priceT: !!ex };
+    dur: ex?.duration ?? 0, price: ex?.price ?? 0, durT: !!ex, priceT: !!ex,
+    hl: hairOf(ex?.services) || init.hairLen || S.customers.find(c => c.id === (ex?.customerId || init.customerId))?.hairLen || 's' };
   if (f.date < today() && !ex) f.date = today();
   let shown = null;
   const tiles = [...activeServices(), ...f.svc.map(lookup).filter(s => s && !activeServices().some(a => a.id === s.id))];
   const body = `<h1 class="ftitle" id="f-title">${ex ? '編輯預約' : '做什麼？'}</h1>
     <div class="tiles" id="f-svc">${tiles.map(s => `<button class="tile k1" data-s="svc" data-id="${s.id}" style="--c:${s.color || PALETTE[7]}" aria-label="${esc(s.name)}"><span class="k1c">${esc([...s.name][0] || '')}</span><span class="k1n">${esc(s.name)}・${hmm(s.duration)}</span></button>`).join('')}</div>
+    <div id="f-lenbox" hidden><div class="lbl"><h2>頭髮多長？</h2></div><div class="chips" id="f-len"></div></div>
     <div class="lbl"><h2>什麼時候？</h2><span id="f-sum"></span></div>
     <div class="chips" id="f-days"></div>
     <div class="slots" id="f-slots" style="margin-top:10px"></div>
@@ -1218,9 +1229,10 @@ function openForm(init = {}) {
     <button class="big" data-s="save" id="f-save">建立預約</button>`;
   const acts = {
     svc(t) { const id = t.dataset.id; f.svc = f.svc.includes(id) ? f.svc.filter(x => x !== id) : [...f.svc, id]; recalc(); },
+    len(t) { setHair(t.dataset.k); },
     day(t) { f.date = t.dataset.d; f.start = null; slots(); },
     slot(t) { f.start = +t.dataset.m; slots(); },
-    pick(t) { const c = S.customers.find(x => x.id === t.dataset.id); f.customerId = c.id; $('#f-name').value = c.name || ''; $('#f-phone').value = c.phone || ''; $('#f-sugg').innerHTML = ''; },
+    pick(t) { const c = S.customers.find(x => x.id === t.dataset.id); f.customerId = c.id; $('#f-name').value = c.name || ''; $('#f-phone').value = c.phone || ''; $('#f-sugg').innerHTML = ''; if (c.hairLen) setHair(c.hairLen); },
     save
   };
   openSheet(body, acts, sh => {
@@ -1249,11 +1261,21 @@ function openForm(init = {}) {
       `<span class="ch${!prev || !prev.includes(s.id) || !prev.length ? ' new' : ''}" style="--c:${s.color || PALETTE[7]}">${esc([...s.name][0] || '')}</span>`).join('');
     el.setAttribute('aria-label', chosen.map(s => s.name).join('＋'));
   }
+  // 換髮長：手動改過的時長、金額也跟著加減差額
+  function setHair(k) {
+    const chosen = f.svc.map(lookup).filter(Boolean), add = hl => chosen.reduce((a, s) => ({ d: a.d + lenAdd(s, hl).d, p: a.p + lenAdd(s, hl).p }), { d: 0, p: 0 });
+    const was = add(f.hl), now = add(k);
+    if (f.durT) f.dur = Math.max(5, f.dur + now.d - was.d);
+    if (f.priceT) f.price = Math.max(0, f.price + now.p - was.p);
+    f.hl = k; recalc();
+  }
   function recalc() {
     const chosen = f.svc.map(lookup).filter(Boolean);
-    if (!f.durT) f.dur = chosen.reduce((a, s) => a + s.duration, 0);
-    if (!f.priceT) f.price = chosen.reduce((a, s) => a + s.price, 0);
+    if (!f.durT) f.dur = chosen.reduce((a, s) => a + s.duration + lenAdd(s, f.hl).d, 0);
+    if (!f.priceT) f.price = chosen.reduce((a, s) => a + s.price + lenAdd(s, f.hl).p, 0);
     $('#f-dur').value = f.dur || ''; $('#f-price').value = f.price || '';
+    $('#f-lenbox').hidden = !chosen.some(s => s.len);
+    $('#f-len').innerHTML = HAIR.map(([k, n, h]) => `<button class="chip ${k === f.hl ? 'on' : ''}" data-s="len" data-k="${k}">${n}<small style="font-weight:500;margin-left:5px;opacity:.7">${h}</small></button>`).join('');
     document.querySelectorAll('#f-svc .tile').forEach(c => c.classList.toggle('on', f.svc.includes(c.dataset.id)));
     title(chosen);
     slots();
@@ -1281,9 +1303,10 @@ function openForm(init = {}) {
     const h = dayHours(f.date);
     if (overlaps(f.start, f.start + f.dur, busyRanges(f.date, f.id)) && !(await ask('這個時段和其他預約重疊，仍要儲存嗎？', '仍要儲存'))) return;
     if ((!h || f.start < h[0] || f.start + f.dur > h[1]) && !(await ask('不在營業時間內，仍要儲存嗎？', '仍要儲存'))) return;
-    const c = ensureCustomer(name, phone, f.customerId);
+    const chosen = f.svc.map(lookup).filter(Boolean);
+    const c = ensureCustomer(name, phone, f.customerId, chosen.some(s => s.len) ? f.hl : '');
     const b = { ...(ex || {}), id: f.id || uid(), date: f.date, start: toHM(f.start), duration: +f.dur, price: +f.price || 0,
-      services: f.svc.map(lookup).filter(Boolean).map(s => ({ id: s.id, name: s.name, duration: s.duration, price: s.price, color: s.color || '' })),
+      services: chosen.map(s => svcSnap(s, f.hl)),
       customerId: c?.id || null, customerName: name || c?.name || '', phone: phone || c?.phone || '', note,
       status: ex?.status || 'booked', source: ex?.source || 'stylist', createdAt: ex?.createdAt || Date.now() };
     backend.put('bookings', b); closeSheet(); U.date = f.date; U.tab = 'day'; render(); toast(ex ? '已更新' : '預約已建立');
@@ -1291,7 +1314,7 @@ function openForm(init = {}) {
 }
 
 function bookingInfo(x, start) {
-  const st = start || x.start, svc = (x.services || []).map(v => v.name).join('＋') || '預約';
+  const st = start || x.start, svc = svcNames(x);
   return `日期：${dateLabel(x.date)}\n時間：${st}–${toHM(toMin(st) + x.duration)}（預計約 ${durText(x.duration)}）\n項目：${svc}\n費用：${money(x.price)}`;
 }
 function contactBtns(phone, msg) {
@@ -1316,7 +1339,7 @@ function openBooking(id) {
     done: set('done'), noshow: set('noshow'), reopen: set('booked'),
     cancel: async () => { if (await ask('確定取消這筆預約？', '取消預約')) set('cancelled')(); },
     shift: () => shiftUI(b), edit: () => openForm({ id }),
-    again: () => openForm({ customerId: b.customerId, name: b.customerName, phone: b.phone, serviceIds: (b.services || []).map(s => s.id), date: today() }),
+    again: () => openForm({ customerId: b.customerId, name: b.customerName, phone: b.phone, serviceIds: (b.services || []).map(s => s.id), hairLen: hairOf(b.services), date: today() }),
     del: async () => { if (await ask('刪除後無法復原，確定刪除？', '刪除')) { backend.remove('bookings', id); closeSheet(); toast('已刪除'); } }
   });
 }
@@ -1331,14 +1354,14 @@ function openRequest(id) {
   const clash = overlaps(toMin(q.start), toMin(q.start) + q.duration, busyRanges(q.date, q.id));
   const msgOk = `您好，您的線上預約已確認：\n\n${bookingInfo(q)}\n\n${S.settings.shopName} 期待您的光臨！`;
   openSheet(`<div class="head-card" style="--c:${q.services?.[0]?.color || PALETTE[7]};margin-top:8px"><span class="badge">待確認</span><span class="num" style="font-size:22px;font-weight:800">${dayWord(q.date)} ${q.start} – ${toHM(toMin(q.start) + q.duration)}</span>
-      <span class="svc">${esc((q.services || []).map(s => s.name).join('＋'))}</span><div class="tags">${[q.name, q.phone].filter(Boolean).map(t => `<span class="tag">${esc(t)}</span>`).join('')}</div></div>
+      <span class="svc">${esc(svcNames(q))}</span><div class="tags">${[q.name, q.phone].filter(Boolean).map(t => `<span class="tag">${esc(t)}</span>`).join('')}</div></div>
     <dl class="kv"><div><dt>金額</dt><dd>${money(q.price)}</dd></div>${q.editOf && q.prevText ? `<div><dt>客人改過</dt><dd>原本 ${esc(q.prevText)}</dd></div>` : ''}${q.note ? `<div><dt>備註</dt><dd>${esc(q.note)}</dd></div>` : ''}</dl>
     ${clash ? '<p class="note" style="color:var(--red)">這個時段與其他預約重疊</p>' : ''}
     <div class="acts c2"><button class="btn ink" data-s="ok">接受</button><button class="btn red" data-s="no">婉拒</button></div>
     ${contactBtns(q.phone, msgOk)}`, {
     ok: async () => {
       if (clash && !(await ask('與其他預約重疊，仍要接受？', '仍要接受'))) return;
-      const c = ensureCustomer(q.name || '', q.phone, null);
+      const c = ensureCustomer(q.name || '', q.phone, null, hairOf(q.services));
       backend.put('bookings', { id: uid(), date: q.date, start: q.start, duration: q.duration, price: q.price, services: q.services || [], customerId: c?.id || null, customerName: q.name || '', phone: q.phone || '', note: q.note || '', status: 'booked', source: 'online', createdAt: Date.now(), reqId: q.editOf || q.id, editKey: q.editKey || '' });
       backend.remove('requests', q.id);
       openSheet(`<h1>已接受</h1><p class="note">要通知客人嗎？</p>${contactBtns(q.phone, msgOk)}<button class="btn" data-s="close" style="width:100%">完成</button>`, { close: closeSheet });
@@ -1362,10 +1385,10 @@ function openEditRequest(q, b) {
   const msgNo = `您好，很抱歉，修改後的時間（${dayWord(q.date)} ${q.start}）無法安排，原本的預約維持不變：\n\n${bookingInfo(b)}\n\n如需再調整請直接與我們聯絡。— ${shop}`;
   openSheet(`<div class="head-card" style="--c:${q.services?.[0]?.color || PALETTE[7]};margin-top:8px"><span class="badge">修改申請</span>
       <span class="num" style="font-size:22px;font-weight:800">${line(q)}</span>
-      <span class="svc">${esc((q.services || []).map(s => s.name).join('＋'))}</span><div class="tags">${[q.name || b.customerName, q.phone || b.phone].filter(Boolean).map(t => `<span class="tag">${esc(t)}</span>`).join('')}</div></div>
+      <span class="svc">${esc(svcNames(q))}</span><div class="tags">${[q.name || b.customerName, q.phone || b.phone].filter(Boolean).map(t => `<span class="tag">${esc(t)}</span>`).join('')}</div></div>
     <dl class="kv">
       <div><dt style="white-space:nowrap;flex:none">原本</dt><dd style="color:var(--muted)">${line(b)}　${esc(svcNames(b))}　${money(b.price)}</dd></div>
-      <div><dt style="white-space:nowrap;flex:none">改成</dt><dd>${line(q)}　${esc((q.services || []).map(s => s.name).join('＋'))}　${money(q.price)}</dd></div>
+      <div><dt style="white-space:nowrap;flex:none">改成</dt><dd>${line(q)}　${esc(svcNames(q))}　${money(q.price)}</dd></div>
       ${q.note ? `<div><dt>備註</dt><dd>${esc(q.note)}</dd></div>` : ''}</dl>
     ${clash ? '<p class="note" style="color:var(--red)">新的時段與其他預約重疊</p>' : ''}
     <p class="note">接受：原本的預約改成新的時間與項目。婉拒：原本的預約不變。</p>
@@ -1373,6 +1396,7 @@ function openEditRequest(q, b) {
     ${contactBtns(q.phone || b.phone, msgOk)}`, {
     ok: async () => {
       if (clash && !(await ask('與其他預約重疊，仍要接受？', '仍要接受'))) return;
+      if (hairOf(q.services) && b.customerId) ensureCustomer('', '', b.customerId, hairOf(q.services));
       backend.put('bookings', { ...b, date: q.date, start: q.start, duration: q.duration, price: q.price, services: q.services || [], customerName: q.name || b.customerName, phone: q.phone || b.phone, note: q.note || '', editedAt: Date.now() });
       backend.remove('requests', q.id);
       openSheet(`<h1>已接受修改</h1><p class="note">通知客人新的時間：</p>${contactBtns(q.phone || b.phone, msgOk)}<button class="btn" data-s="close" style="width:100%">完成</button>`, { close: closeSheet });
@@ -1388,7 +1412,7 @@ function openCustomer(id) {
   const c = S.customers.find(x => x.id === id); if (!c) return;
   const st = custStats(c), hist = [...st.bs].sort(byStart).reverse();
   openSheet(`<h1>${esc(c.name || c.phone || '客人')}</h1>
-    <dl class="kv"><div><dt>電話</dt><dd>${esc(c.phone || '—')}</dd></div><div><dt>完成</dt><dd>${st.visits} 次・${money(st.spend)}</dd></div>${c.note ? `<div><dt>備註</dt><dd>${esc(c.note)}</dd></div>` : ''}</dl>
+    <dl class="kv"><div><dt>電話</dt><dd>${esc(c.phone || '—')}</dd></div><div><dt>完成</dt><dd>${st.visits} 次・${money(st.spend)}</dd></div>${c.hairLen ? `<div><dt>髮長</dt><dd>${hairName(c.hairLen)}</dd></div>` : ''}${c.note ? `<div><dt>備註</dt><dd>${esc(c.note)}</dd></div>` : ''}</dl>
     <div class="acts c2"><button class="btn ink" data-s="book">幫他預約</button><button class="btn" data-s="edit">編輯</button></div>
     ${contactBtns(c.phone, '您好，')}
     <h3>紀錄</h3><div class="rows">${hist.length ? hist.map(b => rowHtml(b, b.status !== 'booked')).join('') : '<div class="empty">尚無紀錄</div>'}</div>`, {
@@ -1399,15 +1423,16 @@ function editCustomer(c) {
   openSheet(`<h1>${c ? '編輯客人' : '新增客人'}</h1>
     <label class="field"><span>電話</span><input id="c-phone" type="tel" inputmode="tel"></label>
     <label class="field"><span>稱呼</span><input id="c-name"></label>
+    <label class="field"><span>髮長</span><select id="c-len"><option value="">未填</option>${HAIR.map(([k, n, h]) => `<option value="${k}">${n}（${h}）</option>`).join('')}</select></label>
     <label class="field"><span>備註</span><textarea id="c-note" rows="3" placeholder="髮質、過敏、喜好"></textarea></label>
     <button class="big" data-s="save">儲存</button>${c ? '<button class="btn ghost red" data-s="del" style="width:100%;margin-top:8px">刪除客人（保留紀錄）</button>' : ''}`, {
     save: () => {
       const name = $('#c-name').value.trim(), phone = $('#c-phone').value.trim(); if (!name && !phone) return toast('請輸入電話或稱呼');
-      const obj = { ...(c || { id: uid(), createdAt: Date.now() }), name, phone, note: $('#c-note').value.trim() };
+      const obj = { ...(c || { id: uid(), createdAt: Date.now() }), name, phone, note: $('#c-note').value.trim(), hairLen: $('#c-len').value };
       backend.put('customers', obj); openCustomer(obj.id); toast('已儲存');
     },
     del: async () => { if (await ask('刪除這位客人？', '刪除')) { backend.remove('customers', c.id); closeSheet(); } }
-  }, sh => { $('#c-name', sh).value = c?.name || ''; $('#c-phone', sh).value = c?.phone || ''; $('#c-note', sh).value = c?.note || ''; });
+  }, sh => { $('#c-name', sh).value = c?.name || ''; $('#c-phone', sh).value = c?.phone || ''; $('#c-note', sh).value = c?.note || ''; $('#c-len', sh).value = c?.hairLen || ''; });
 }
 function editService(s) {
   let color = s?.color || PALETTE[S.services.length % PALETTE.length];
@@ -1415,17 +1440,26 @@ function editService(s) {
     <label class="field"><span>名稱</span><input id="v-name" placeholder="例如：頭皮護理"></label>
     <div class="f2"><label class="field"><span>時長（分）</span><input id="v-dur" type="number" inputmode="numeric" min="5" step="5"></label><label class="field"><span>價格</span><input id="v-price" type="number" inputmode="numeric" min="0" step="10"></label></div>
     <div class="field"><span>顏色</span><div class="colors">${PALETTE.map(c => `<button data-s="color" data-c="${c}" style="--c:${c}" class="${c === color ? 'on' : ''}" aria-label="顏色"></button>`).join('')}</div></div>
+    <label class="li" style="background:var(--card);border-radius:18px;margin:6px 0 8px"><span class="g"><b>依髮長加時加價</b><small>燙、染、護等頭髮越長越費時的服務</small></span><input type="checkbox" class="tog" id="v-len"></label>
+    <div id="v-lens" hidden>${HAIR.slice(1).map(([k, n, h]) => `<div class="f2"><label class="field"><span>${n}（${h}）加時（分）</span><input id="v-ld-${k}" type="number" inputmode="numeric" min="0" step="5"></label><label class="field"><span>加價</span><input id="v-lp-${k}" type="number" inputmode="numeric" min="0" step="10"></label></div>`).join('')}
+      <p class="note" style="margin-top:0">短髮（耳上）照原本時長、價格。</p></div>
     <label class="li" style="background:var(--card);border-radius:18px;margin:6px 0 14px"><span class="g"><b>開放預約</b></span><input type="checkbox" class="tog" id="v-active"></label>
     <button class="big" data-s="save">儲存</button>${s ? '<button class="btn ghost red" data-s="del" style="width:100%;margin-top:8px">刪除</button>' : ''}`, {
     color: t => { color = t.dataset.c; document.querySelectorAll('.colors button').forEach(b => b.classList.toggle('on', b === t)); },
     save: () => {
       const name = $('#v-name').value.trim(), duration = +$('#v-dur').value;
       if (!name) return toast('請輸入名稱'); if (!(duration > 0)) return toast('請輸入時長');
-      backend.put('services', { ...(s || { id: uid(), order: Math.max(-1, ...S.services.map(x => x.order ?? 0)) + 1 }), name, duration, price: +$('#v-price').value || 0, color, active: $('#v-active').checked });
+      const len = $('#v-len').checked ? Object.fromEntries(HAIR.slice(1).map(([k]) => [k, { d: Math.max(0, Math.round(+$('#v-ld-' + k).value || 0)), p: Math.max(0, +$('#v-lp-' + k).value || 0) }])) : null;
+      backend.put('services', { ...(s || { id: uid(), order: Math.max(-1, ...S.services.map(x => x.order ?? 0)) + 1 }), name, duration, price: +$('#v-price').value || 0, color, active: $('#v-active').checked, len });
       closeSheet(); toast('已儲存');
     },
     del: async () => { if (await ask(`刪除「${s.name}」？過去紀錄不受影響。`, '刪除')) { backend.remove('services', s.id); closeSheet(); } }
-  }, sh => { $('#v-name', sh).value = s?.name || ''; $('#v-dur', sh).value = s?.duration || 60; $('#v-price', sh).value = s?.price ?? ''; $('#v-active', sh).checked = s ? s.active !== false : true; });
+  }, sh => { $('#v-name', sh).value = s?.name || ''; $('#v-dur', sh).value = s?.duration || 60; $('#v-price', sh).value = s?.price ?? ''; $('#v-active', sh).checked = s ? s.active !== false : true;
+    const len = s?.len || LEN_DEFAULT;
+    HAIR.slice(1).forEach(([k]) => { $('#v-ld-' + k, sh).value = len[k]?.d ?? 0; $('#v-lp-' + k, sh).value = len[k]?.p ?? 0; });
+    const box = $('#v-lens', sh), tog = $('#v-len', sh);
+    tog.checked = !!s?.len; box.hidden = !tog.checked; tog.onchange = () => { box.hidden = !tog.checked; };
+  });
 }
 
 /* ---------- 事件 ---------- */
