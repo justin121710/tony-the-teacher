@@ -28,8 +28,10 @@ input:focus,textarea:focus,select:focus{border-color:var(--ink)}
 input::placeholder,textarea::placeholder{color:#8A837D}
 #app{max-width:520px;margin:0 auto;padding:calc(env(safe-area-inset-top) + 14px) 16px calc(120px + env(safe-area-inset-bottom))}
 .hd{display:flex;align-items:center;gap:6px;margin:4px 0 14px}
-.hd h1{font-size:23px;font-weight:900;margin:0 4px;position:relative;white-space:nowrap}
-.hd h1 input{position:absolute;inset:0;opacity:0;min-height:0;padding:0}
+.hd h1{font-size:23px;font-weight:900;margin:0 2px;position:relative;white-space:nowrap;overflow:hidden;border-radius:14px;padding:4px 8px;display:flex;align-items:center;gap:4px}
+.hd h1 .caret{font-size:14px;color:var(--muted)}
+.hd h1 input{position:absolute;left:0;top:0;width:100%;height:100%;max-width:100%;min-width:0;opacity:0;min-height:0;padding:0;margin:0;border:0;-webkit-appearance:none;appearance:none}
+.hd .ib{position:relative;z-index:2}
 .ib{width:44px;height:44px;border-radius:16px;display:grid;place-items:center;background:var(--soft);flex:none;font-size:20px}
 .clock{margin-left:auto;font-weight:700;color:var(--muted);font-size:16px}
 .pill{display:inline-flex;align-items:center;gap:6px;padding:0 14px;border-radius:999px;background:var(--soft);font-weight:700;font-size:14px;min-height:40px}
@@ -65,10 +67,10 @@ h2.sec{font-size:15px;font-weight:900;margin:22px 6px 8px}
 .link{color:var(--muted);font-weight:700;font-size:14px;padding:12px 6px;display:block}
 .sum{font-size:13px;color:var(--muted);margin:14px 6px 0;font-weight:700}
 nav.tabs{position:fixed;left:0;right:0;bottom:0;background:rgba(255,247,238,.95);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);padding-bottom:env(safe-area-inset-bottom);z-index:20}
-nav.tabs .in{max-width:520px;margin:0 auto;height:84px;display:flex;align-items:center;justify-content:space-around;padding:0 30px}
-nav.tabs .tb{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:12px;font-weight:700;color:var(--muted);width:64px}
+nav.tabs .in{max-width:520px;margin:0 auto;height:84px;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;justify-items:center;padding:0 24px}
+nav.tabs .tb{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:12px;font-weight:700;color:var(--muted);width:72px;height:64px}
 nav.tabs .tb.on{color:var(--ink)}
-nav.tabs .plus{width:72px;height:72px;border-radius:26px;background:var(--ink);color:#fff;display:grid;place-items:center;margin-top:-30px;box-shadow:0 10px 24px rgba(27,27,31,.25)}
+nav.tabs .plus{width:64px;height:64px;border-radius:22px;background:var(--ink);color:#fff;display:grid;place-items:center;box-shadow:0 8px 20px rgba(27,27,31,.22)}
 .layer{position:fixed;inset:0;z-index:40;display:none}.layer.open{display:block}
 #alert-root{z-index:60}
 .bg{position:absolute;inset:0;background:rgba(40,30,22,.55);animation:fd .2s}
@@ -87,7 +89,7 @@ nav.tabs .plus{width:72px;height:72px;border-radius:26px;background:var(--ink);c
 .tile.on{box-shadow:inset 0 0 0 5px var(--ink)}
 .tile.k1.on{padding:12px 14px}
 .ftitle{min-height:44px;display:flex;align-items:center;flex-wrap:wrap;gap:2px}
-.ftitle .ch{display:inline-block;font-size:36px;font-weight:900;line-height:1.1;color:var(--c);-webkit-text-stroke:1.6px var(--ink);paint-order:stroke fill}
+.ftitle .ch{display:inline-block;font-size:38px;font-weight:900;line-height:1.15;color:var(--c);-webkit-text-stroke:3px var(--ink);paint-order:stroke fill}
 .ftitle .plus{display:inline-block;font-size:28px;font-weight:900;color:var(--ink);margin:0 4px}
 .ftitle .new{animation:pop .32s cubic-bezier(.3,1.5,.5,1)}
 .ftitle .swap{animation:fadein .22s ease-out}
@@ -579,7 +581,7 @@ window.addEventListener('unhandledrejection', e => { const r = e.reason; if (r &
 function viewDay() {
   const d = U.date, isT = d === today(), dt = parseDs(d), n = nowMin(), step = S.settings.slotStep || 30;
   let h = `<div class="hd"><button class="ib" data-act="day" data-n="-1" aria-label="前一天">‹</button>
-    <h1>${isT ? '今天' : '週' + WD[dt.getDay()]} <span class="num">${dt.getMonth() + 1}/${dt.getDate()}</span><input type="date" data-chg="jump" value="${d}" aria-label="選擇日期"></h1>
+    <h1>${isT ? '今天' : '週' + WD[dt.getDay()]} <span class="num">${dt.getMonth() + 1}/${dt.getDate()}</span><span class="caret" aria-hidden="true">▾</span><input type="date" data-chg="jump" value="${d}" aria-label="選擇日期"></h1>
     <button class="ib" data-act="day" data-n="1" aria-label="後一天">›</button>
     ${isT ? `<span class="clock num" id="clock">${toHM(n)}</span>` : '<button class="pill" data-act="today" style="margin-left:auto">回今天</button>'}</div>`;
   if (S.settings.alerts !== false && !audioOK) h += `<button class="banner soft" data-act="unlock"><span>點一下，開啟超時提醒聲音</span>${ICON.bell}</button>`;
